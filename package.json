@@ -9,7 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@itk-wasm/image-io": "^1.2.1",
     "@kitware/vtk.js": "^30.5.2",
+    "bootstrap": "^5.3.3",
+    "itk-wasm": "^1.0.0-b.176",
+    "vite-plugin-static-copy": "^1.0.5",
     "vue": "^3.4.21"
   },
   "devDependencies": {
