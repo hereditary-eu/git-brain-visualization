@@ -50,13 +50,14 @@ onMounted(()=>{
 
         // create color and opacity transfer functions
         const ctfun = vtkColorTransferFunction.newInstance();
-        ctfun.addRGBPoint(200.0, 1.0, 1.0, 1.0);
-        ctfun.addRGBPoint(2000.0, 0.0, 0.0, 0.0);
+        ctfun.addRGBPoint(1.5, 0.0, 0.0, 1.0);
+        ctfun.addRGBPoint(9, 1.0, 1.0, 1.0);
+        ctfun.addRGBPoint(17.5, 1.0, 0.0, 0.0);
 
         const ofun = vtkPiecewiseFunction.newInstance();
-        ofun.addPoint(200.0, 0.0);
-        ofun.addPoint(1200.0, 0.2);
-        ofun.addPoint(4000.0, 0.4);
+        ofun.addPoint(1.5, 0.0);
+        ofun.addPoint(9.0, 1.0);
+        ofun.addPoint(17.5, 0.0);
 
         volume.getProperty().setRGBTransferFunction(0, ctfun);
         volume.getProperty().setScalarOpacity(0, ofun);

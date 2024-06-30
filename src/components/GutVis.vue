@@ -8,7 +8,9 @@ onMounted(()=>{
 </script>
 
 <template>
- <div ref="d3jsContainer"></div>
+ <div class="d-flex align-items-center justify-content-center" ref="d3jsContainer">
+    <h3>Placeholder for d3js gut visualization.</h3>
+ </div>
 </template>
 
 <style scoped>
