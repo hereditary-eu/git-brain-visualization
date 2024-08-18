@@ -36,12 +36,10 @@ async function loadNifti() {
 <template>
     <div class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end border-bottom" ref="sagittalPlane"></Slicer>
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-bottom" ref="coronalPlane"></Slicer>
-        </div>
-        <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.axial" class="w-100 h-100 border-end border-top" ref="axialPlane"></Slicer>
-            <Volume :image-data="imageData" class="w-100 h-100 border-start border-top"></Volume>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" ref="sagittalPlane"></Slicer>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" ref="coronalPlane"></Slicer>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" ref="axialPlane"></Slicer>
+            <Volume :image-data="imageData" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>
 </template>

@@ -20,7 +20,7 @@ export default defineConfig({
       ],
     }),
   ],
-  assetsInclude: ['**/*.nii','**/*.nii.gz'],
+  assetsInclude: ['**/*.nii','**/*.nii.gz','**/*.txt','**/*.xlsx'],
   resolve: {
     // where itk-wasm code has 'import ../itkConfig.js` point to the path of itkConfig
     alias: {
