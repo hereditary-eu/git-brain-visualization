@@ -1,3 +1,5 @@
+@import "../node_modules/bootstrap/scss/bootstrap";
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 
@@ -80,4 +82,43 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+.rect-hover-border {
+  stroke-width:2;
+  stroke:$info;
+}
+
+.rect-no-border {
+  stroke-width:0;
+  stroke:$info;
+}
+
+.group-hover-border {
+  outline-width: thin;
+  outline-style: solid; 
+  outline-color: $secondary;
+  outline-offset: 0px;
+}
+
+.group-no-border {
+  outline-width: thin;
+  outline-style: none; 
+  outline-color: $secondary;
+  outline-offset: 0px;
+}
+
+.group-active-border{
+  outline-width: thin;
+  outline-style: solid; 
+  outline-color: $warning;
+  outline-offset: 0px;
+}
+
+.h-45 {
+  height: 45% !important;
+}
+
+.h-10 {
+  height:10% !important;
 }

@@ -12,22 +12,28 @@
 </script>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 
 import { select, 
          scaleBand,
          Selection,
+         scaleDiverging,
          scaleSequential,
-         interpolateViridis } from "d3";
+         interpolateRdYlGn,
+         BaseType } from "d3";
 import Tooltip from './Tooltip.vue'
+import RangeLegend from './visualization-components/RangeLegend.vue'
 import { TooltipData } from './Tooltip.vue'
-
-let svg:Selection<SVGSVGElement>;
 
 const props = defineProps<{ blockData: Array<Array<BlockDataFormat>>, 
                             xRange: Array<string>,
                             yRange: Array<string>,
-                            minMax: Array<number>}>()
+                            max: number,
+                            activeComponent: string | undefined}>()
+
+const emit = defineEmits<{
+  (e: 'onActive', value: string | undefined): void
+}>()
 
 let width = 1200;
 let height = 450;
@@ -35,26 +41,50 @@ let height = 450;
 let squareSize = 12
 
 const plotContainer = ref<HTMLDivElement | null>(null)
-const d3Content = ref(null)
+const d3Content = ref<SVGSVGElement>()
 
-const plotOffset = {x:25,y:150}
+const plotOffset = {x:25,y:100}
+
+const legendSize = ref<[number,number]>([20,props.yRange.length*(squareSize+1.5)])
 
 const tooltipPos = ref<Array<number>>([0,0])
 const tooltipInfo = ref<TooltipData | null>(null)
 
-const color = scaleSequential(props.minMax, interpolateViridis);
+const thresholdValues = ref<[number,number]>([-2.3,2.3])
+
+const color = scaleSequential([-props.max,props.max], interpolateRdYlGn).nice();
+
+let svg:Selection<SVGSVGElement, any, null, any>;
+let rows : Selection<SVGGElement | BaseType, Array<BlockDataFormat>, SVGGElement, any>;
 
 function formatTooltipInfo(d:BlockDataFormat){
-
-  let formattedTooltipData = {
+   return {
     "Z-score":{
       'text': d.value,
       'indent': 0
     }
-   }
-
-  return formattedTooltipData
+   } as TooltipData
 }
+
+watch(()=> props.activeComponent, (activeComponent)=>{
+    rows
+      .attr('class', (d:any)=>{
+              return d[0].y == activeComponent ? "group-active-border" : "group-no-border"
+            })
+
+    rows
+      .filter((d:any)=>d[0].y==activeComponent)
+        .raise()
+})
+
+watch(thresholdValues, (tvalues)=>{
+  rows
+    .selectAll('rect')
+      .attr("fill", (d:any) => { 
+        return d.value > tvalues[0] && d.value < tvalues[1]  ? 'whitesmoke' :
+               color(Number(d.value))
+      })
+})
 
 onMounted(()=>{
    if(plotContainer.value){
@@ -62,65 +92,99 @@ onMounted(()=>{
     height = plotContainer.value.offsetHeight
   }
 
-  svg = select(d3Content.value)
+  if(d3Content.value){
+    svg = select<SVGSVGElement,any>(d3Content.value)
       .attr("width", width)
       .attr("height", height)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
 
-   color.domain(props.minMax)
+    select("#legend")
+      .attr("transform", `translate(${width-legendSize.value[0]-10},${plotOffset.y})`)
 
-   updateVisuals()
+    color.domain([-props.max,props.max])
+
+    setupPlot()
+  }
 })
 
-function updateVisuals(){
+function setupPlot(){
   const x = scaleBand(props.xRange, [plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
   const y = scaleBand(props.yRange, [plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
 
-  let rows = svg.selectAll('g')
+  let columnGroups = svg.append('g')
+
+  columnGroups
+    .selectAll('g')
+    .data(props.xRange)
+    .join('g')
+      .attr('id', (d:any)=>`${d.replace(/^[^a-z]+|[^\w:.-]+/gi, "")}-group`)
+      .attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
+      .append('rect')
+        .attr("width", squareSize)
+        .attr("height", (props.yRange.length)*(squareSize+1.5)-1.5)
+        .attr("fill-opacity", 0)
+
+  let rowGroup = svg.append('g')
+  
+  rows = rowGroup.selectAll('g')
     .data(props.blockData)
     .join("g")
       .attr("transform", (d:any) => `translate(0,${y(d[0].y)})`);
       
-  let rowEntry = rows.selectAll('g')
+  rows.selectAll('rect')
     .data((d:any)=>d)
-    .join('g')
+    .join('rect')
       .attr("transform", (d:any) => `translate(${x(d.x)},0)`)
+      .attr("width", squareSize)
+      .attr("height", squareSize)
+      .attr("fill", (d:any) => { 
+        return d.value > -2.3 && d.value < 2.3  ? 'whitesmoke' :
+               color(Number(d.value))
+      })
       .on('mouseover',function(this:any, e:any, d:any){
+        let component = d.y
         tooltipPos.value = [e.offsetX, e.offsetY]
         tooltipInfo.value = formatTooltipInfo(d)
-        select(this)
-          .select('rect')
+
+        select(`#${d.x.replace(/^[^a-z]+|[^\w:.-]+/gi, "")}-group`)
             .attr('class', (d:any)=>{
-              return d.value ? "svg-hover-border" : "svg-no-border"
+              return d ? "group-hover-border" : "group-no-border"
             })
+            .raise()
+
+        select(this)
+            .attr('class', (d:any)=>{
+              return d.value ? "rect-hover-border" : "rect-no-border"
+            })
+            .raise()
+
+         select(this.parentNode)
+            .attr('class', (d:any)=>{
+              return d ? "group-hover-border" : 
+                          component != props.activeComponent ? "group-no-border" : "group-active-border"
+            })
+            .raise()
       })
       .on("mousemove", (e:any)=>{
         tooltipPos.value = [e.offsetX, e.offsetY]
       })
-      .on("mouseout", function(this:any,e:any){
+      .on("mouseout", function(this:any,_,d:any){
+        let component = d.y
         tooltipPos.value = [Number.MAX_VALUE, Number.MAX_VALUE]
         tooltipInfo.value = null
         select(this)
-          .select('rect')
-            .attr('class', "svg-no-border")
-      })
+            .attr('class', "rect-no-border")
+        
+        select(`#${d.x.replace(/^[^a-z]+|[^\w:.-]+/gi, "")}-group`)
+          .attr('class', "group-no-border")
 
-  rowEntry.append('rect')
-      .attr("width", squareSize)
-      .attr("height", squareSize)
-      .attr("fill", (d:any) => { 
-        return d.value < 2.3 ? 'whitesmoke' :
-               color(Number(d.value))
+        select(this.parentNode)
+            .attr('class', props.activeComponent != component ? "group-no-border" : "group-active-border")
       })
-
-  rowEntry.append('text')
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .attr('x', squareSize/2)
-      .attr('y', squareSize/2+2)
-      .attr('class','prevent-select svg-light')
-      .text((d:any)=>d.text)
+      .on('click', function(this:any,_,d:any){
+        emit('onActive',d.y)
+      })
 
   let axesLabels = svg.append('g')
   
@@ -133,7 +197,7 @@ function updateVisuals(){
         .style("user-select", "none")
         .style("font-size", "10px")
         .attr('transform', (d:any)=>`translate(${plotOffset.x-2},${y(d)+squareSize/2+3})`)
-        .text((d:any,i:number)=>d)
+        .text((d:any)=>d)
 
   // display column names
   axesLabels.append('g')
@@ -163,7 +227,9 @@ window.addEventListener("resize", ()=>{
 <template>
  <div class="d-flex position-relative justify-content-center align-items-center flex-column w-100 h-100 p-2"> <!-- Add padding above the container so the width and height are properly calculated in the setup script-->
     <div ref="plotContainer" class="d-flex justify-content-center align-items-center flex-column w-100 h-100">
-      <svg ref="d3Content"></svg>
+      <svg ref="d3Content">
+        <RangeLegend id="legend" :value="[-2.3,2.3]" :size="legendSize" :insideOut="false" :color="color"  @onChange="(tValues)=>thresholdValues = tValues"/>
+      </svg>
     </div>
     <Tooltip title="" :class="[tooltipInfo ? 'd-flex' : 'd-none']" :tooltipData="tooltipInfo" :position="tooltipPos"/>
   </div>
