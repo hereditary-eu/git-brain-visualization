@@ -1,5 +1,15 @@
+<script lang="ts">
+enum RestingStateNetworkType {
+  'DMN'=2,
+  'ECN'=3,
+  'SNI'=4
+}
+
+export { RestingStateNetworkType }
+</script>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import Slicer from './visualization-components/Slicer.vue'
 import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
@@ -10,43 +20,23 @@ import { niftiReadImage } from "@itk-wasm/image-io"
 import vtkITKHelper from '@kitware/vtk.js/Common/DataModel/ITKHelper';
 import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 
-// Need to look into importing it dynamic
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-1.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-2.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-3.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-4.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-5.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-6.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-7.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-8.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-9.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-10.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-11.nii.gz'
-import DMNImageUrl from '../assets/test_data/niftiOut_mi2-12.nii'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-13.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-14.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-15.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-16.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-17.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-18.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-19.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-20.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-21.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-22.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-23.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-24.nii.gz'
-// import DMNImageUrl from '../assets/test_data/niftiOut_mi2-25.nii.gz'
-
-// import ECNImageUrl from '../assets/test_data/niftiOut_mi3-X.nii.gz'
-// import SNImageUrl from '../assets/test_data/niftiOut_mi4-X.nii.gz'
-
-const props = defineProps<{activeComponent: string | undefined}>()
+const props = defineProps<{activeComponent: string | undefined,
+                            components: Array<string>,
+                            restingStateNetwork: RestingStateNetworkType
+                            
+}>()
 
 const imageData = ref<vtkImageData>();
 
 const niftisLoading = ref<boolean>(false);
 
-const niftiImages : Array<vtkImageData> = []
+interface ComponentImageMap {
+    [component: string] : {
+        [key in RestingStateNetworkType] : vtkImageData
+    }
+}
+
+const niftiImages : ComponentImageMap = {}
 
 onMounted(() => {
     loadNiftis()
@@ -54,34 +44,61 @@ onMounted(() => {
 
 async function loadNiftis() {
     niftisLoading.value = true;
-    let DMNUrl = '../assets/test_data/niftiOut_mi2-X.nii.gz'
+    let dataUrlTemplate = '../assets/data/neuro/niftiOut_miX-Y.nii.gz'
 
-    let testURL = DMNImageUrl
-
-    let DMNUrls : Array<string | undefined> = [...Array(25).keys()].map((d:number)=>{
-        return d == 11 ? testURL : undefined//new URL(DMNUrl.replace("X",String(d+1)), import.meta.url).href : undefined
-    })
-    let promises = DMNUrls.map((url:string | undefined)=>{
-        return url ? fetch(url)
-            .then((res)=>res.blob())
-            .then((data)=>{
-                return niftiReadImage(new File([data], 'bla'))    
-            })   
-            .then(({ image: itkImage, webWorker })=>{
-                webWorker.terminate();
-                if(itkImage){
-                    return niftiImages.push(Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage)))
-                }
-            }) : undefined
+    let dataUrlsComponents : Array<{component:string, restingStateNetworkType: RestingStateNetworkType, url:string}> = new Array<{component:string, restingStateNetworkType: RestingStateNetworkType, url:string}>();
+    props.components.forEach((d:string)=>{
+        [RestingStateNetworkType.DMN,RestingStateNetworkType.ECN,RestingStateNetworkType.SNI].forEach((restingStateNetworkType)=>{ // How to properly iterate over typescript that will be properly transpile?
+            dataUrlsComponents.push({'component':d, 
+                         'restingStateNetworkType': restingStateNetworkType,
+                         'url':new URL(dataUrlTemplate.replace("Y",String(d)).replace("X",String(restingStateNetworkType)), import.meta.url).href
+                        })
+        })
     })
 
-    Promise.all(promises).then(() => {
-        console.log("retreived all niftis")
+    let dataPromises = dataUrlsComponents.map((dataUrlComponent)=>{
+        return fetch(dataUrlComponent.url)
+            .then((res)=>{
+                return {'component': dataUrlComponent.component, 'restingStateNetworkType':dataUrlComponent.restingStateNetworkType, 'dataPromise':res.blob()}
+            })
+            
+    })
+
+    // Currently the niftiReadImage is done sequentially in the promises because doing them all at once will not load the data properly, I think it spawns too many workers or
+    // ITK internally doesn't like asynchronous image reading
+    Promise.all(dataPromises).then((dataArrays : {'component':string,'restingStateNetworkType':RestingStateNetworkType,'dataPromise':Promise<Blob>}[])=>{
+        return dataArrays.reduce((p : Promise<any>, res: {'component':string,'restingStateNetworkType':RestingStateNetworkType,'dataPromise':Promise<Blob>})=>{
+            return p.then(() => res.dataPromise.then((data)=>{ 
+                                                return niftiReadImage(new File([data], `nifti_${res.restingStateNetworkType}_${res.component}.nii.gz`))
+                                            })    
+                                            .then(({ image: itkImage, webWorker })=>{
+                                                webWorker.terminate();
+                                                if(itkImage){
+                                                    if(!niftiImages[res.component]){
+                                                        niftiImages[res.component] = {} as {[key in RestingStateNetworkType] : vtkImageData}
+                                                    }
+                                                    return niftiImages[res.component][res.restingStateNetworkType] = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+                                                }
+                                            })
+                        )
+        },Promise.resolve())
+    })
+    .then(()=>{
+        if(props.activeComponent && props.restingStateNetwork){
+            imageData.value = niftiImages[props.activeComponent][props.restingStateNetwork]
+        } 
+    })  
+    .finally(()=>{
         niftisLoading.value = false;
-        imageData.value = niftiImages[11]
-    });
-     
+    })     
 }
+
+watch(()=>{ return {'activeComponent':props.activeComponent,
+           'restingStateNetwork':props.restingStateNetwork}}, ()=>{
+    if(props.activeComponent && typeof props.restingStateNetwork !== 'undefined'){
+        imageData.value = niftiImages[props.activeComponent][props.restingStateNetwork]
+    }
+})
 
 
 </script>

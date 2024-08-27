@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BrainVis from './components/BrainVis.vue'
+import { RestingStateNetworkType } from './components/BrainVis.vue'
 import GutVis from './components/GutVis.vue'
 import { dsvFormat, extent } from 'd3'
-import { BlockDataFormat } from './components/GutVis.vue'
 
-import modalityContributionsFile from './assets/test_data/niftiOut_mi1.txt?raw'
-import subjectMicrobiotaDataFile from './assets/test_data/ModalityInput/HBS_ 30perfiltered_abs_extendedLICA_189.txt?raw'
-import gutComponentsFile from './assets/test_data/niftiOut_mi1.txt?raw'
+import subjectMicrobiotaDataFile from './assets/data/gut/HBS_ 30perfiltered_abs_extendedLICA_189.txt?raw'
+import gutComponentsFile from './assets/data/gut/niftiOut_mi1.txt?raw'
 
 const ssv = dsvFormat(" ");
 
@@ -26,9 +25,13 @@ let gutComponents = ssv.parseRows(gutComponentsFile, (row:any,rowIndex:number)=>
 
 gutComponents = gutComponents[0].map((_:any, colIndex:number) => gutComponents.map((row:any) => row[colIndex])); // transpose
 
+let components : Array<string> = gutComponents.map((d:any)=>d[0].y)
+
 const maxGutComponentValue = Math.max(...(extent(gutComponents.flat().map((d:any)=>d.value)).map((d:any)=>Math.abs(d))))
 
 const activeComponent = ref<string | undefined>(undefined)
+
+const currentRestingStateNetwork = ref<RestingStateNetworkType>(RestingStateNetworkType.DMN)
 
 function setActive(component : string){
   activeComponent.value = component
@@ -58,7 +61,7 @@ function setActive(component : string){
     </div>
   </div>
   <div class="p-1 h-45 w-100">
-    <BrainVis :activeComponent="activeComponent" class="p-0 card h-100"/>
+    <BrainVis :activeComponent="activeComponent" :restingStateNetwork="currentRestingStateNetwork" :components="components" class="p-0 card h-100"/>
   </div>
   
 </template>
