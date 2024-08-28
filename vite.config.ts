@@ -28,6 +28,13 @@ export default defineConfig({
       '../../itkConfig.js': itkConfig
     }
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "bootstrap/scss/bootstrap";`
+      }
+    }
+  },
   worker: {
     format: 'es'
   },

@@ -122,3 +122,11 @@ button:focus-visible {
 .h-10 {
   height:10% !important;
 }
+
+.active:not(.modality) {
+  outline: 3px solid color-mix(in srgb, $success, transparent 25%) !important;
+}
+
+.modality.active {
+  border: 2px solid color-mix(in srgb, $success, transparent 25%) !important;
+}

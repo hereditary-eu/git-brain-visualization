@@ -1,18 +1,9 @@
-<script lang="ts">
-enum RestingStateNetworkType {
-  'DMN'=2,
-  'ECN'=3,
-  'SNI'=4
-}
-
-export { RestingStateNetworkType }
-</script>
-
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import Slicer from './visualization-components/Slicer.vue'
 import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
+import { Modalities } from '../App.vue'
 
 import vtkLiteHttpDataAccessHelper from '@kitware/vtk.js/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper';
 // @ts-nocheck
@@ -22,7 +13,7 @@ import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 
 const props = defineProps<{activeComponent: string | undefined,
                             components: Array<string>,
-                            restingStateNetwork: RestingStateNetworkType
+                            modality: Modalities
                             
 }>()
 
@@ -32,7 +23,7 @@ const niftisLoading = ref<boolean>(false);
 
 interface ComponentImageMap {
     [component: string] : {
-        [key in RestingStateNetworkType] : vtkImageData
+        [key in Modalities] : vtkImageData
     }
 }
 
@@ -46,12 +37,12 @@ async function loadNiftis() {
     niftisLoading.value = true;
     let dataUrlTemplate = '../assets/data/neuro/niftiOut_miX-Y.nii.gz'
 
-    let dataUrlsComponents : Array<{component:string, restingStateNetworkType: RestingStateNetworkType, url:string}> = new Array<{component:string, restingStateNetworkType: RestingStateNetworkType, url:string}>();
+    let dataUrlsComponents : Array<{component:string, modality: Modalities, url:string}> = new Array<{component:string, modality: Modalities, url:string}>();
     props.components.forEach((d:string)=>{
-        [RestingStateNetworkType.DMN,RestingStateNetworkType.ECN,RestingStateNetworkType.SNI].forEach((restingStateNetworkType)=>{ // How to properly iterate over typescript that will be properly transpile?
+        [Modalities.DMN,Modalities.ECN,Modalities.SNI].forEach((modality)=>{ // How to properly iterate over typescript that will be properly transpile?
             dataUrlsComponents.push({'component':d, 
-                         'restingStateNetworkType': restingStateNetworkType,
-                         'url':new URL(dataUrlTemplate.replace("Y",String(d)).replace("X",String(restingStateNetworkType)), import.meta.url).href
+                         'modality': modality,
+                         'url':new URL(dataUrlTemplate.replace("Y",String(d)).replace("X",String(modality)), import.meta.url).href
                         })
         })
     })
@@ -59,33 +50,33 @@ async function loadNiftis() {
     let dataPromises = dataUrlsComponents.map((dataUrlComponent)=>{
         return fetch(dataUrlComponent.url)
             .then((res)=>{
-                return {'component': dataUrlComponent.component, 'restingStateNetworkType':dataUrlComponent.restingStateNetworkType, 'dataPromise':res.blob()}
+                return {'component': dataUrlComponent.component, 'modality':dataUrlComponent.modality, 'dataPromise':res.blob()}
             })
             
     })
 
     // Currently the niftiReadImage is done sequentially in the promises because doing them all at once will not load the data properly, I think it spawns too many workers or
     // ITK internally doesn't like asynchronous image reading
-    Promise.all(dataPromises).then((dataArrays : {'component':string,'restingStateNetworkType':RestingStateNetworkType,'dataPromise':Promise<Blob>}[])=>{
-        return dataArrays.reduce((p : Promise<any>, res: {'component':string,'restingStateNetworkType':RestingStateNetworkType,'dataPromise':Promise<Blob>})=>{
+    Promise.all(dataPromises).then((dataArrays : {'component':string,'modality':Modalities,'dataPromise':Promise<Blob>}[])=>{
+        return dataArrays.reduce((p : Promise<any>, res: {'component':string,'modality':Modalities,'dataPromise':Promise<Blob>})=>{
             return p.then(() => res.dataPromise.then((data)=>{ 
-                                                return niftiReadImage(new File([data], `nifti_${res.restingStateNetworkType}_${res.component}.nii.gz`))
+                                                return niftiReadImage(new File([data], `nifti_${res.modality}_${res.component}.nii.gz`))
                                             })    
                                             .then(({ image: itkImage, webWorker })=>{
                                                 webWorker.terminate();
                                                 if(itkImage){
                                                     if(!niftiImages[res.component]){
-                                                        niftiImages[res.component] = {} as {[key in RestingStateNetworkType] : vtkImageData}
+                                                        niftiImages[res.component] = {} as {[key in Modalities] : vtkImageData}
                                                     }
-                                                    return niftiImages[res.component][res.restingStateNetworkType] = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+                                                    return niftiImages[res.component][res.modality] = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
                                                 }
                                             })
                         )
         },Promise.resolve())
     })
     .then(()=>{
-        if(props.activeComponent && props.restingStateNetwork){
-            imageData.value = niftiImages[props.activeComponent][props.restingStateNetwork]
+        if(props.activeComponent && props.modality){
+            imageData.value = niftiImages[props.activeComponent][props.modality]
         } 
     })  
     .finally(()=>{
@@ -94,9 +85,12 @@ async function loadNiftis() {
 }
 
 watch(()=>{ return {'activeComponent':props.activeComponent,
-           'restingStateNetwork':props.restingStateNetwork}}, ()=>{
-    if(props.activeComponent && typeof props.restingStateNetwork !== 'undefined'){
-        imageData.value = niftiImages[props.activeComponent][props.restingStateNetwork]
+           'modality':props.modality}}, ()=>{
+    if(props.activeComponent && 
+       typeof props.modality !== 'undefined' && 
+       [Modalities.DMN,Modalities.ECN,Modalities.SNI].includes(props.modality) &&
+        !niftisLoading.value){
+        imageData.value = niftiImages[props.activeComponent][props.modality]
     }
 })
 
@@ -104,7 +98,7 @@ watch(()=>{ return {'activeComponent':props.activeComponent,
 </script>
 
 <template>
-    <div v-if="niftisLoading">Brain resting state networks loading...</div>
+    <div v-if="niftisLoading"><h2>Brain resting state networks loading...</h2></div>
     <div v-else class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
             <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" ref="sagittalPlane"></Slicer>
