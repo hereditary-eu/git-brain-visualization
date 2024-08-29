@@ -1,9 +1,8 @@
-# Vue 3 + TypeScript + Vite
+# Hereditary Brain-gut visualization
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+For more information about the project and this visualization see the [Hereditary project](https://confluence.ia.surf.nl/display/VIS/HEREDITARY) and [5.2 task](https://confluence.ia.surf.nl/display/VIS/Task+5.2+-+Brain-gut+interplay+usecase) page on our internal confluence.
 
-## Recommended Setup
+To run the visualization on your own system clone this repository and execute the following commands (needs `npm` on your system):
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (previously Volar) and disable Vetur
-
-- Use [vue-tsc](https://github.com/vuejs/language-tools/tree/master/packages/tsc) for performing the same type checking from the command line, or for generating d.ts files for SFCs.
+1. `npm install`
+2. `npm run dev`
