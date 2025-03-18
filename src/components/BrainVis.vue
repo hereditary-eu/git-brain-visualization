@@ -13,7 +13,8 @@ import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 
 const props = defineProps<{activeComponent: string | undefined,
                             components: Array<string>,
-                            modality: Modalities
+                            modality: Modalities,
+                            maxValue: number,
                             
 }>()
 
@@ -101,9 +102,9 @@ watch(()=>{ return {'activeComponent':props.activeComponent,
     <div v-if="niftisLoading"><h2>Brain resting state networks loading...</h2></div>
     <div v-else class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" ref="sagittalPlane"></Slicer>
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" ref="coronalPlane"></Slicer>
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" ref="axialPlane"></Slicer>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" :maxValue="props.maxValue" ref="sagittalPlane"></Slicer>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="coronalPlane"></Slicer>
+            <Slicer :image-data="imageData" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="axialPlane"></Slicer>
             <Volume :image-data="imageData" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>

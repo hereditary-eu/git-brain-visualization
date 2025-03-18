@@ -24,6 +24,7 @@ import { select,
 import Tooltip from './Tooltip.vue'
 import RangeLegend from './visualization-components/RangeLegend.vue'
 import { TooltipData } from './Tooltip.vue'
+import numeral from 'numeral'
 
 const props = defineProps<{ blockData: Array<Array<BlockDataFormat>>, 
                             xRange: Array<string>,
@@ -35,15 +36,15 @@ const emit = defineEmits<{
   (e: 'onActive', value: string | undefined): void
 }>()
 
-let width = 1200;
-let height = 450;
+let width = 2018;
+let height = 502;
 
 let squareSize = 12
 
 const plotContainer = ref<HTMLDivElement | null>(null)
 const d3Content = ref<SVGSVGElement>()
 
-const plotOffset = {x:25,y:100}
+const plotOffset = {x:15,y:150}
 
 const legendSize = ref<[number,number]>([20,props.yRange.length*(squareSize+1.5)])
 
@@ -59,8 +60,16 @@ let rows : Selection<SVGGElement | BaseType, Array<BlockDataFormat>, SVGGElement
 
 function formatTooltipInfo(d:BlockDataFormat){
    return {
+    "Component":{
+      'text': d.y,
+      'indent': 0
+    },
+    "Micro-biota":{
+      'text': d.x,
+      'indent': 0
+    },
     "Z-score":{
-      'text': d.value,
+      'text': numeral(d.value).format('0.[00]'),
       'indent': 0
     }
    } as TooltipData
@@ -87,15 +96,8 @@ watch(thresholdValues, (tvalues)=>{
 })
 
 onMounted(()=>{
-   if(plotContainer.value){
-    width = plotContainer.value.offsetWidth
-    height = plotContainer.value.offsetHeight
-  }
-
   if(d3Content.value){
     svg = select<SVGSVGElement,any>(d3Content.value)
-      .attr("width", width)
-      .attr("height", height)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
 
@@ -209,19 +211,35 @@ function setupPlot(){
         .style("font-size", "10px")
         .attr('transform', (d:any)=>`translate(${x(d)+squareSize/2+2},${plotOffset.y-2}) rotate(-45) `)
         .text((d:any)=>d)
+
+  axesLabels.append("text")
+    .attr("x", width-75)
+    .attr("y", height-5)
+    .attr("fill", "currentColor")
+    .attr("text-anchor", "end")
+    .attr("class", "title")
+    .style("font-size", "12px")
+    .text(`Micro-biota →`)
+
+    axesLabels.append("text")
+    .attr("x", 5)
+    .attr("y", height-5)
+    .attr("fill", "currentColor")
+    .attr("text-anchor", "start")
+    .attr("class", "title")
+    .style("font-size", "12px")
+    .text(`↓ LICA components`)
 }
 
-window.addEventListener("resize", ()=>{
-  if(plotContainer.value){
-    width = plotContainer.value.offsetWidth
-    height = plotContainer.value.offsetHeight
-  }
+// window.addEventListener("resize", ()=>{
+//   if(plotContainer.value){
+//     width = plotContainer.value.offsetWidth
+//     height = plotContainer.value.offsetHeight
+//   }
 
-  svg
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height]);
-});
+//   svg
+//     .attr("viewBox", [0, 0, width, height]);
+// });
 </script>
 
 <template>

@@ -19,7 +19,9 @@ const { SlicingMode } = Constants;
 
 import { MedicalPlanes } from '../../utils/consts'
 
-const props = defineProps<{ imageData: vtkImageData | undefined, plane: MedicalPlanes}>()
+const props = defineProps<{ imageData: vtkImageData | undefined, 
+                            plane: MedicalPlanes
+                            maxValue: number}>()
 
 const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
                           props.plane == MedicalPlanes.coronal ? 'Coronal' :
@@ -40,10 +42,8 @@ watch(()=> props.imageData, ()=>{
   if (context.value && props.imageData) {
     context.value.mapper.setInputData(props.imageData);
 
-    let [min, max] = props.imageData.getPointData().getArray(0).getRange()
-
-    context.value.actor.getProperty().setColorWindow(max-min);
-    context.value.actor.getProperty().setColorLevel((max+min)*0.5);
+    context.value.actor.getProperty().setColorWindow(props.maxValue+props.maxValue);
+    context.value.actor.getProperty().setColorLevel(0);
 
     const camera = context.value.renderer.getActiveCamera();
     const position = camera.getFocalPoint();
@@ -84,18 +84,18 @@ onMounted(()=>{
                               props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
 
         const rgb = vtkColorTransferFunction.newInstance();
-        rgb.addRGBPoint(1.5, 0.0, 0.0, 1.0);
-        rgb.addRGBPoint(9, 1.0, 1.0, 1.0);
-        rgb.addRGBPoint(17.5, 1.0, 0.0, 0.0);
+        rgb.addRGBPoint(-30, 0.647, 0, 0.149);
+        rgb.addRGBPoint(0, 0.968, 0.972, 0.678);
+        rgb.addRGBPoint(30, 0, 0.407, 0.215);
 
         const ofun = vtkPiecewiseFunction.newInstance();
-        ofun.addPoint(1.5, 0.0);
-        ofun.addPoint(9.0, 1.0);
-        ofun.addPoint(17.5, 0.0);
+        ofun.addPoint(-5, 1);
+        ofun.addPoint(0, 0);
+        ofun.addPoint(5, 1);
 
         const actor = vtkImageSlice.newInstance();
         actor.getProperty().setRGBTransferFunction(0, rgb);
-        //actor.getProperty().setPiecewiseFunction(0, ofun);
+        actor.getProperty().setPiecewiseFunction(0, ofun);
         actor.setMapper(mapper);     
 
         const renderer = genericRenderWindow.getRenderer();

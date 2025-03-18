@@ -75,7 +75,7 @@ function setContributions(){
 </script>
 
 <template>
-  <div class="d-flex flex-column p-1 h-45 w-100">
+  <div class="d-flex flex-column p-1 h-50 w-100">
     <!-- <div class="d-flex flex-shrink-1 justify-content-between align-items-center">
       <h2 class="ms-4 my-0">Gut-brain interplay</h2>
       <img class="h-25" alt="Hereditary logo" src="./assets/hereditary.svg"/>
@@ -101,8 +101,8 @@ function setContributions(){
       </div>
     </div>
   </div>
-  <div class="p-1 h-45 w-100">
-    <BrainVis :class="{'active':[Modalities.DMN,Modalities.ECN,Modalities.SNI].includes(currentModality)}" :activeComponent="activeComponent" :modality="currentModality" :components="components" class="d-flex justify-content-center align-items-center p-0 card h-100"/>
+  <div class="p-1 h-40 w-100">
+    <BrainVis :class="{'active':[Modalities.DMN,Modalities.ECN,Modalities.SNI].includes(currentModality)}" :activeComponent="activeComponent" :modality="currentModality" :components="components" :maxValue="maxGutComponentValue" class="d-flex justify-content-center align-items-center p-0 card h-100"/>
   </div>
   
 </template>
