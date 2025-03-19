@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, ref, watch} from 'vue';
+import {onMounted, ref} from 'vue';
 
 import { select, 
          Selection,
@@ -23,7 +23,6 @@ const container = ref<SVGGElement>()
 let brushG : Selection<SVGGElement, any, any, any>;
 
 const legendTickSpace = 0
-const marginHandles = 3
 
 // watch(()=> props.value, ()=>{
 //   if(brushG){
@@ -45,7 +44,7 @@ function ramp(colorInterpolator : any, n = 256) {
   return canvas;
 }
 
-function drawLegend(g){
+function drawLegend(g:any){
   g
   .selectAll("*").remove();
 

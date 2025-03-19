@@ -28,7 +28,7 @@ const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
                           props.plane == MedicalPlanes.sagittal ? 'Sagittal' : '')
 
 interface Context {
-    genericRenderWindow : vtkFullScreenRenderWindow,
+    fullRenderWindow : vtkFullScreenRenderWindow,
     renderWindow: vtkRenderWindow,
     renderer: vtkRenderer,
     actor: vtkImageSlice,
@@ -38,7 +38,9 @@ interface Context {
 const vtkContainer = ref<HTMLElement>();
 const context = ref<Context>();
 
-watch(()=> props.imageData, ()=>{
+watch(()=> props.imageData, setupImageData);
+
+function setupImageData(){
   if (context.value && props.imageData) {
     context.value.mapper.setInputData(props.imageData);
 
@@ -69,19 +71,25 @@ watch(()=> props.imageData, ()=>{
     context.value.renderer.resetCamera();
     context.value.renderWindow.render();
   }
-});
+}
 
 onMounted(()=>{
     if (!context.value) {
-        const genericRenderWindow = vtkFullScreenRenderWindow.newInstance({
+        const fullRenderWindow = vtkFullScreenRenderWindow.newInstance({
             container: vtkContainer.value,
         });
 
-        const mapper = vtkImageMapper.newInstance();
-        mapper.setSliceAtFocalPoint(true);
-        mapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
+        const imageMapper = vtkImageMapper.newInstance();
+        imageMapper.setSliceAtFocalPoint(true);
+        imageMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
                               props.plane == MedicalPlanes.axial ? SlicingMode.Z :
                               props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
+
+        // const atlasMapper = vtkImageMapper.newInstance();
+        // atlasMapper.setSliceAtFocalPoint(true);
+        // atlasMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
+        //                       props.plane == MedicalPlanes.axial ? SlicingMode.Z :
+        //                       props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
 
         const rgb = vtkColorTransferFunction.newInstance();
         rgb.addRGBPoint(-30, 0.647, 0, 0.149);
@@ -93,35 +101,41 @@ onMounted(()=>{
         ofun.addPoint(0, 0);
         ofun.addPoint(5, 1);
 
-        const actor = vtkImageSlice.newInstance();
-        actor.getProperty().setRGBTransferFunction(0, rgb);
-        actor.getProperty().setPiecewiseFunction(0, ofun);
-        actor.setMapper(mapper);     
+        const imageActor = vtkImageSlice.newInstance();
+        imageActor.getProperty().setRGBTransferFunction(0, rgb);
+        imageActor.getProperty().setPiecewiseFunction(0, ofun);
+        imageActor.setMapper(imageMapper);     
 
-        const renderer = genericRenderWindow.getRenderer();
-        const renderWindow = genericRenderWindow.getRenderWindow();
+        // const atlasActor = vtkImageSlice.newInstance();
+        // atlasActor.setMapper(atlasMapper);     
 
-        renderer.addActor(actor);
+        const renderer = fullRenderWindow.getRenderer();
+        const renderWindow = fullRenderWindow.getRenderWindow();
+
+        // renderer.addActor(atlasActor);
+        renderer.addActor(imageActor);
 
         const iStyle = vtkInteractorStyleImage.newInstance();
-        renderWindow.getInteractor().setInteractorStyle(iStyle);
+        const interactor = renderWindow.getInteractor()
+        interactor.setInteractorStyle(iStyle);
 
         context.value = {
-            "genericRenderWindow":genericRenderWindow,
+            "fullRenderWindow":fullRenderWindow,
             "renderWindow":renderWindow,
             "renderer":renderer,
-            "actor":actor,
-            "mapper":mapper,
+            "actor":imageActor,
+            "mapper":imageMapper,
         };
+      setupImageData()
   }
 })
 
 onBeforeUnmount(() => {
   if (context.value) {
-    const { genericRenderWindow, actor, mapper } = context.value;
+    const { fullRenderWindow, actor, mapper } = context.value;
     actor.delete();
     mapper.delete();
-    genericRenderWindow.delete();
+    fullRenderWindow.delete();
     context.value = undefined;
   }
 });

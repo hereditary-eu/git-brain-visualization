@@ -4,8 +4,6 @@ import Slicer from './visualization-components/Slicer.vue'
 import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
 import { Modalities } from '../App.vue'
-
-import vtkLiteHttpDataAccessHelper from '@kitware/vtk.js/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper';
 // @ts-nocheck
 import { niftiReadImage } from "@itk-wasm/image-io"
 import vtkITKHelper from '@kitware/vtk.js/Common/DataModel/ITKHelper';

@@ -17,7 +17,6 @@ import {onMounted, ref, watch} from 'vue';
 import { select, 
          scaleBand,
          Selection,
-         scaleDiverging,
          scaleSequential,
          interpolateRdYlGn,
          BaseType } from "d3";
@@ -53,7 +52,7 @@ const tooltipInfo = ref<TooltipData | null>(null)
 
 const thresholdValues = ref<[number,number]>([-2.3,2.3])
 
-const color = scaleSequential([-props.max,props.max], interpolateRdYlGn).nice();
+const color = scaleSequential([-props.max,props.max], interpolateRdYlGn)
 
 let svg:Selection<SVGSVGElement, any, null, any>;
 let rows : Selection<SVGGElement | BaseType, Array<BlockDataFormat>, SVGGElement, any>;
@@ -198,7 +197,11 @@ function setupPlot(){
         .attr("text-anchor", "end")
         .style("user-select", "none")
         .style("font-size", "10px")
-        .attr('transform', (d:any)=>`translate(${plotOffset.x-2},${y(d)+squareSize/2+3})`)
+        .attr('transform', (d:string)=>{
+          let yPos : number | undefined = y(d)
+          yPos = yPos ? yPos : -100;
+          return `translate(${plotOffset.x-2},${yPos+squareSize/2+3})`
+        })
         .text((d:any)=>d)
 
   // display column names
@@ -209,7 +212,11 @@ function setupPlot(){
         .attr("text-anchor", "start")
         .style("user-select", "none")
         .style("font-size", "10px")
-        .attr('transform', (d:any)=>`translate(${x(d)+squareSize/2+2},${plotOffset.y-2}) rotate(-45) `)
+        .attr('transform', (d:any)=>{
+          let xPos : number | undefined = x(d)
+          xPos = xPos ? xPos : -100;
+          return `translate(${xPos+squareSize/2+2},${plotOffset.y-2}) rotate(-45)`
+        })
         .text((d:any)=>d)
 
   axesLabels.append("text")

@@ -7,16 +7,21 @@ const itkConfig = path.resolve(__dirname, 'src', 'itkConfig.js')
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: process.env.NODE_ENV == 'development' ? '' : process.env.APPLICATION_ENDPOINT,
   plugins: [
     vue(),
     // put lazy loaded JavaScript and Wasm bundles in dist directory
     viteStaticCopy({
       targets: [
-        { src: 'node_modules/itk-wasm/dist/web-workers/*', dest: 'dist/itk/web-workers' },
+        { src: 'node_modules/itk-wasm/dist/web-workers/*', dest: 'assets/itk/web-workers' },
         {
           src: 'node_modules/itk-image-io/*',
-          dest: 'dist/itk/image-io',
-        }
+          dest: 'assets/itk/image-io',
+        },
+        {
+          src: 'src/assets/data/*',
+          dest: 'assets/data',
+        },        
       ],
     }),
   ],
@@ -40,5 +45,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['itk-wasm', '@itk-wasm/image-io']
+  },
+  esbuild: {
+    minifyIdentifiers: true
   },
 })

@@ -1,5 +1,4 @@
-import { create,
-         quantize,
+import { quantize,
          interpolate,
          interpolateRound,
          scaleLinear,
@@ -127,9 +126,9 @@ function legend(parentG : Selection<SVGSVGElement | SVGGElement, any, any, any>,
         .selectAll("rect")
         .data(color.range())
         .join("rect")
-          .attr("x", (d, i) => x(i - 1))
+          .attr("x", (_, i) => x(i - 1))
           .attr("y", marginRight)
-          .attr("width", (d, i) => x(i) - x(i - 1))
+          .attr("width", (_, i) => x(i) - x(i - 1))
           .attr("height", width - marginRight - marginLeft)
           .attr("fill", (d : any) => d);
   

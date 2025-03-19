@@ -12,7 +12,7 @@ import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransf
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction';
 
 interface Context {
-    genericRenderWindow : vtkFullScreenRenderWindow,
+    fullRenderWindow : vtkFullScreenRenderWindow,
     renderWindow: vtkRenderWindow,
     renderer: vtkRenderer,
     volume: vtkVolume,
@@ -24,17 +24,19 @@ const context = ref<Context>();
 
 const props = defineProps<{ imageData : vtkImageData | undefined}>()
 
-watch(()=> props.imageData, ()=>{
+watch(()=> props.imageData, setupVolumeData)
+
+function setupVolumeData(){
     if(context.value && props.imageData){
         context.value.mapper.setInputData(props.imageData);
         context.value.renderer.resetCamera(props.imageData.getBounds())
         context.value.renderWindow.render();
     }
-})
+}
 
 onMounted(()=>{
     if (!context.value) {
-        const genericRenderWindow = vtkFullScreenRenderWindow.newInstance({
+        const fullRenderWindow = vtkFullScreenRenderWindow.newInstance({
             container: vtkContainer.value,
         });
 
@@ -42,8 +44,8 @@ onMounted(()=>{
         const mapper = vtkVolumeMapper.newInstance();        
         volume.setMapper(mapper);
 
-        const renderer = genericRenderWindow.getRenderer();
-        const renderWindow = genericRenderWindow.getRenderWindow();
+        const renderer = fullRenderWindow.getRenderer();
+        const renderWindow = fullRenderWindow.getRenderWindow();
 
         renderer.addVolume(volume);
         renderer.resetCamera();
@@ -65,21 +67,22 @@ onMounted(()=>{
         volume.getProperty().setInterpolationTypeToFastLinear();
 
         context.value = {
-            "genericRenderWindow":genericRenderWindow,
+            "fullRenderWindow":fullRenderWindow,
             "renderWindow":renderWindow,
             "renderer":renderer,
             "volume":volume,
             "mapper":mapper,
         };
+        setupVolumeData()
   }
 })
 
 onBeforeUnmount(() => {
   if (context.value) {
-    const { genericRenderWindow, volume, mapper } = context.value;
+    const { fullRenderWindow, volume, mapper } = context.value;
     volume.delete();
     mapper.delete();
-    genericRenderWindow.delete();
+    fullRenderWindow.delete();
     context.value = undefined;
   }
 });
