@@ -3,7 +3,7 @@
   interface BlockDataFormat {
     x: number | string | Date,
     y: number | string | Date,
-    value: number | undefined,
+    value: number,
     metaData: any,
     text: string,
   }
@@ -38,12 +38,12 @@ const emit = defineEmits<{
 let width = 2018;
 let height = 502;
 
-let squareSize = 12
+let squareSize = 10
 
 const plotContainer = ref<HTMLDivElement | null>(null)
 const d3Content = ref<SVGSVGElement>()
 
-const plotOffset = {x:15,y:150}
+const plotOffset = {x:15,y:120}
 
 const legendSize = ref<[number,number]>([20,props.yRange.length*(squareSize+1.5)])
 
@@ -54,8 +54,16 @@ const thresholdValues = ref<[number,number]>([-2.3,2.3])
 
 const color = scaleSequential([-props.max,props.max], interpolateRdYlGn)
 
+const x = scaleBand(props.xRange, [plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
+const y = scaleBand(props.yRange, [plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
+
+let sortedComponent : string | undefined = undefined
+
 let svg:Selection<SVGSVGElement, any, null, any>;
 let rows : Selection<SVGGElement | BaseType, Array<BlockDataFormat>, SVGGElement, any>;
+let columnLabels : Selection<BaseType | SVGTextElement, string, SVGGElement, any>;
+let rowLabels : Selection<BaseType | SVGTextElement, string, SVGGElement, any>;
+let columnGroups : Selection<SVGGElement | BaseType, string, SVGGElement, any>;
 
 function formatTooltipInfo(d:BlockDataFormat){
    return {
@@ -96,12 +104,27 @@ watch(thresholdValues, (tvalues)=>{
 
 onMounted(()=>{
   if(d3Content.value){
+    if(plotContainer.value){
+      width = plotContainer.value.offsetWidth
+      height = plotContainer.value.offsetHeight
+    }
+
     svg = select<SVGSVGElement,any>(d3Content.value)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
 
+    let xSquare = ((width - plotOffset.x - 200) / props.xRange.length ) - 1.5
+    if((xSquare+1.5)*props.yRange.length > height - plotOffset.y - 20){
+      squareSize = ((height - plotOffset.y -20) / props.yRange.length ) - 1.5
+    }         
+    else {
+      squareSize = xSquare
+    }
+    
+    legendSize.value[1] = props.yRange.length*(squareSize+1.5)
+
     select("#legend")
-      .attr("transform", `translate(${width-legendSize.value[0]-10},${plotOffset.y})`)
+      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y})`)
 
     color.domain([-props.max,props.max])
 
@@ -110,21 +133,23 @@ onMounted(()=>{
 })
 
 function setupPlot(){
-  const x = scaleBand(props.xRange, [plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
-  const y = scaleBand(props.yRange, [plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
 
-  let columnGroups = svg.append('g')
+  x.domain(props.xRange).range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
+  y.domain(props.yRange).range([plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
 
-  columnGroups
+  let columnGroupContainer = svg.append('g')
+
+  columnGroups = columnGroupContainer
     .selectAll('g')
     .data(props.xRange)
     .join('g')
       .attr('id', (d:any)=>`${d.replace(/^[^a-z]+|[^\w:.-]+/gi, "")}-group`)
       .attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
-      .append('rect')
-        .attr("width", squareSize)
-        .attr("height", (props.yRange.length)*(squareSize+1.5)-1.5)
-        .attr("fill-opacity", 0)
+      .call((g)=>g
+        .append('rect')
+          .attr("width", squareSize)
+          .attr("height", (props.yRange.length)*(squareSize+1.5)-1.5)
+          .attr("fill-opacity", 0))
 
   let rowGroup = svg.append('g')
   
@@ -190,13 +215,15 @@ function setupPlot(){
   let axesLabels = svg.append('g')
   
   // display row names
-  axesLabels.append('g')
+  rowLabels=axesLabels.append('g')
       .selectAll('text')
       .data(props.yRange)
       .join('text')
         .attr("text-anchor", "end")
         .style("user-select", "none")
         .style("font-size", "10px")
+        .style("cursor", "pointer")
+        .on('click', sortColumns)
         .attr('transform', (d:string)=>{
           let yPos : number | undefined = y(d)
           yPos = yPos ? yPos : -100;
@@ -205,7 +232,7 @@ function setupPlot(){
         .text((d:any)=>d)
 
   // display column names
-  axesLabels.append('g')
+  columnLabels=axesLabels.append('g')
       .selectAll('text')
       .data(props.xRange)
       .join('text')
@@ -220,7 +247,7 @@ function setupPlot(){
         .text((d:any)=>d)
 
   axesLabels.append("text")
-    .attr("x", width-75)
+    .attr("x", props.xRange.length*(squareSize + 1.5))
     .attr("y", height-5)
     .attr("fill", "currentColor")
     .attr("text-anchor", "end")
@@ -236,7 +263,49 @@ function setupPlot(){
     .attr("class", "title")
     .style("font-size", "12px")
     .text(`↓ LICA components`)
+
+  svg.append("g")
+     .attr('transform','translate(0,10)')
+     .call(g=>g.append('rect')
+      .attr('width',420)
+      .attr('height',15)
+      .attr('fill','white')
+      .attr('y', -10)
+     )
+     .append('text')
+        .attr("text-anchor", "start")
+        .attr('font-weight', 'bold')
+        .text('Click a row label to sort or click a row cell to select a component')
 }
+
+function sortColumns(e:Event,component:string){
+  if(component!=sortedComponent){
+    sortedComponent = component
+    let componentRow = props.blockData.find((blockrow:BlockDataFormat[])=>blockrow[0].y==component) 
+    if(componentRow){
+      let sortedRange : string[]= componentRow.sort((a:BlockDataFormat,b:BlockDataFormat)=>{
+        return a.value - b.value
+      }).map((block)=>String(block.x))
+      x.domain(sortedRange)
+    }
+  }
+  else{
+    x.domain(props.xRange)
+  }
+
+  columnLabels
+    .attr('transform', (d:any)=>{
+          let xPos : number | undefined = x(d)
+          xPos = xPos ? xPos : -100;
+          return `translate(${xPos+squareSize/2+2},${plotOffset.y-2}) rotate(-45)`
+        })
+  rowLabels
+    .style('font-weight', (d:any)=>d==component?'bold':'normal')
+    .style('font-size', (d:any)=>d==component?'12px':'10px')
+  rows.selectAll('rect').attr("transform", (d:any) => `translate(${x(d.x)},0)`)
+  columnGroups.attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
+}
+
 
 // window.addEventListener("resize", ()=>{
 //   if(plotContainer.value){

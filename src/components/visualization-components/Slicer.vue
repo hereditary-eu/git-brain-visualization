@@ -13,6 +13,7 @@ import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransf
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction';
 
 import vtkInteractorStyleImage from '@kitware/vtk.js/Interaction/Style/InteractorStyleImage';
+import IRenderWindowInteractorEvent from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 
 
 const { SlicingMode } = Constants;
@@ -118,6 +119,9 @@ onMounted(()=>{
         const iStyle = vtkInteractorStyleImage.newInstance();
         const interactor = renderWindow.getInteractor()
         interactor.setInteractorStyle(iStyle);
+        interactor.onMouseWheel((e:any)=>{
+          //console.log(context.value?.mapper.getSlice())
+        })
 
         context.value = {
             "fullRenderWindow":fullRenderWindow,
