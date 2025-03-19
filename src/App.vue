@@ -40,6 +40,7 @@ const modalityContribution = ref<{[name:number]:{percentage:number, color:string
 
 
 const subjectMicrobiotaData = ssv.parse(subjectMicrobiotaDataFile)
+subjectMicrobiotaData.columns = subjectMicrobiotaData.columns.map((biota)=>biota.trim())
 let gutComponents = ssv.parseRows(gutComponentsFile, (row:any,rowIndex:number)=>{
   return row.map((d:any,columnIndex:number)=>{
     return {
@@ -50,6 +51,8 @@ let gutComponents = ssv.parseRows(gutComponentsFile, (row:any,rowIndex:number)=>
     }
   })
 })
+
+let gutXRange = subjectMicrobiotaData.columns.slice(1).sort((a, b) => a.localeCompare(b));
 
 gutComponents = gutComponents[0].map((_:any, colIndex:number) => gutComponents.map((row:any) => row[colIndex])); // transpose
 
@@ -72,6 +75,7 @@ function setContributions(){
   }
 }
 
+
 </script>
 
 <template>
@@ -80,7 +84,7 @@ function setContributions(){
       <h2 class="ms-4 my-0">Gut-brain interplay</h2>
       <img class="h-25" alt="Hereditary logo" src="./assets/hereditary.svg"/>
     </div> -->
-    <GutVis :class="{'active':currentModality==Modalities.Microbiota}" @on-active="(value)=>{if(value){ setActive(value) }}" :activeComponent="activeComponent" :blockData="gutComponents" :xRange="subjectMicrobiotaData.columns.slice(1)" :yRange="[...Array(25).keys()].map((d:any)=>String(d+1))" :max="maxGutComponentValue" class="flex-grow-1 card"/>
+    <GutVis :class="{'active':currentModality==Modalities.Microbiota}" @on-active="(value)=>{if(value){ setActive(value) }}" :activeComponent="activeComponent" :blockData="gutComponents" :xRange="gutXRange" :yRange="[...Array(25).keys()].map((d:any)=>String(d+1))" :max="maxGutComponentValue" class="flex-grow-1 card"/>
   </div>
   <div class="d-flex flex-row h-10 w-100">
     <div class="flex-shrink-1 h-100 p-1">
