@@ -278,7 +278,7 @@ function setupPlot(){
         .text('Click a row label to sort or click a row cell to select a component')
 }
 
-function sortColumns(e:Event,component:string){
+function sortColumns(_:any,component:string){
   if(component!=sortedComponent){
     sortedComponent = component
     let componentRow = props.blockData.find((blockrow:BlockDataFormat[])=>blockrow[0].y==component) 
