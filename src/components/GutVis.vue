@@ -38,12 +38,12 @@ const emit = defineEmits<{
 let width = 2018;
 let height = 502;
 
-let squareSize = 10
+let squareSize = 14
 
 const plotContainer = ref<HTMLDivElement | null>(null)
 const d3Content = ref<SVGSVGElement>()
 
-const plotOffset = {x:15,y:120}
+const plotOffset = {x:15,y:130}
 
 const legendSize = ref<[number,number]>([20,props.yRange.length*(squareSize+1.5)])
 
@@ -113,7 +113,7 @@ onMounted(()=>{
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
 
-    let xSquare = ((width - plotOffset.x - 200) / props.xRange.length ) - 1.5
+    let xSquare = ((width - plotOffset.x - 70) / props.xRange.length ) - 1.5
     if((xSquare+1.5)*props.yRange.length > height - plotOffset.y - 20){
       squareSize = ((height - plotOffset.y -20) / props.yRange.length ) - 1.5
     }         
@@ -124,7 +124,7 @@ onMounted(()=>{
     legendSize.value[1] = props.yRange.length*(squareSize+1.5)
 
     select("#legend")
-      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y})`)
+      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y+((props.yRange.length*(squareSize+1.5)))-props.yRange.length*15.5})`)
 
     color.domain([-props.max,props.max])
 
