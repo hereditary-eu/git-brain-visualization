@@ -28,9 +28,27 @@ interface ComponentImageMap {
 
 const niftiImages : ComponentImageMap = {}
 
+const brainAtlas = ref<vtkImageData>();
+
 onMounted(() => {
-    loadNiftis()
+    loadAtlas().then(()=>{
+        loadNiftis()
+    })
 });
+
+async function loadAtlas() {
+    return fetch('../assets/data/neuro/brain-atlas-volume.nii')
+          .then((res)=>res.blob())
+          .then((data)=>{
+            return niftiReadImage(new File([data], `brain-atlas-volume.nii`))
+          })    
+          .then(({ image: itkImage, webWorker })=>{
+            webWorker.terminate();
+            if(itkImage){
+              brainAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+            }
+          })
+}
 
 async function loadNiftis() {
     niftisLoading.value = true;
@@ -80,7 +98,7 @@ async function loadNiftis() {
     })  
     .finally(()=>{
         niftisLoading.value = false;
-    })     
+    })
 }
 
 watch(()=>{ return {'activeComponent':props.activeComponent,
@@ -100,9 +118,9 @@ watch(()=>{ return {'activeComponent':props.activeComponent,
     <div v-if="niftisLoading"><h2>Brain resting state networks loading...</h2></div>
     <div v-else class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" :maxValue="props.maxValue" ref="sagittalPlane"></Slicer>
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="coronalPlane"></Slicer>
-            <Slicer :image-data="imageData" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="axialPlane"></Slicer>
+            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" :maxValue="props.maxValue" ref="sagittalPlane"></Slicer>
+            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="coronalPlane"></Slicer>
+            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="axialPlane"></Slicer>
             <Volume :image-data="imageData" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>

@@ -4,18 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5174",
     "build": "vue-tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@itk-wasm/image-io": "^1.2.1",
-    "@kitware/vtk.js": "^30.5.2",
+    "@kitware/vtk.js": "^33.0.0",
     "bootstrap": "^5.3.3",
     "d3": "^7.9.0",
     "itk-wasm": "^1.0.0-b.176",
     "numeral": "^2.0.6",
     "vite-plugin-static-copy": "^1.0.5",
+    "vtk.js": "^33.0.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {

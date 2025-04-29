@@ -8,6 +8,7 @@ import vtkVolumeMapper    from '@kitware/vtk.js/Rendering/Core/VolumeMapper';
 import vtkRenderWindow    from '@kitware/vtk.js/Rendering/Core/RenderWindow';
 import vtkRenderer        from '@kitware/vtk.js/Rendering/Core/Renderer';
 import vtkImageData  from '@kitware/vtk.js/Common/DataModel/ImageData'
+import vtkGLTFImporter from '@kitware/vtk.js/IO/Geometry/GLTFImporter'
 import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransferFunction';
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction';
 
@@ -65,6 +66,18 @@ onMounted(()=>{
         volume.getProperty().setScalarOpacity(0, ofun);
         volume.getProperty().setScalarOpacityUnitDistance(0, 4.5);
         volume.getProperty().setInterpolationTypeToFastLinear();
+
+        // const reader = vtkGLTFImporter.newInstance({
+        //     renderer,
+        // });
+        // reader
+        //     .setUrl('../assets/data/neuro/brain-atlas-geometry.glb', { binary: true })
+        //     .then(()=>{
+        //         reader.onReady(()=>{
+        //             reader.importActors();
+        //             renderer.resetCamera();
+        //         })
+        //     });
 
         context.value = {
             "fullRenderWindow":fullRenderWindow,

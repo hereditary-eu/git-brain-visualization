@@ -21,42 +21,37 @@ const { SlicingMode } = Constants;
 import { MedicalPlanes } from '../../utils/consts'
 
 const props = defineProps<{ imageData: vtkImageData | undefined, 
-                            plane: MedicalPlanes
+                            brainAtlas: vtkImageData | undefined,
+                            plane: MedicalPlanes,
                             maxValue: number}>()
 
 const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
                           props.plane == MedicalPlanes.coronal ? 'Coronal' :
                           props.plane == MedicalPlanes.sagittal ? 'Sagittal' : '')
 
-interface Context {
-    fullRenderWindow : vtkFullScreenRenderWindow,
-    renderWindow: vtkRenderWindow,
-    renderer: vtkRenderer,
-    actor: vtkImageSlice,
-    mapper: vtkImageMapper,
-}
+let fullRenderWindow : vtkFullScreenRenderWindow;
+let renderWindow: vtkRenderWindow;
+let renderer: vtkRenderer;
+let imageActor: vtkImageSlice;
+let atlasActor: vtkImageSlice;
+let imageMapper: vtkImageMapper;
+let atlasMapper: vtkImageMapper;
 
 const vtkContainer = ref<HTMLElement>();
-const context = ref<Context>();
 
-watch(()=> props.imageData, setupImageData);
+watch(()=> props.brainAtlas, ()=>{
+  if (atlasMapper && props.brainAtlas) {
+    atlasMapper.setInputData(props.brainAtlas)
 
-function setupImageData(){
-  if (context.value && props.imageData) {
-    context.value.mapper.setInputData(props.imageData);
-
-    context.value.actor.getProperty().setColorWindow(props.maxValue+props.maxValue);
-    context.value.actor.getProperty().setColorLevel(0);
-
-    const camera = context.value.renderer.getActiveCamera();
+    const camera = renderer.getActiveCamera();
     const position = camera.getFocalPoint();
     // offset along the slicing axis
-    const normal = context.value.mapper.getSlicingModeNormal();
+    const normal = atlasMapper.getSlicingModeNormal();
     position[0] += normal[0];
     position[1] += normal[1];
     position[2] += normal[2];
     camera.setPosition(...position);
-    switch (context.value.mapper.getSlicingMode()) {
+    switch (atlasMapper.getSlicingMode()) {
       case SlicingMode.X:
         camera.setViewUp([0, 1, 0]);
         break;
@@ -69,79 +64,104 @@ function setupImageData(){
       default:
     }
     camera.setParallelProjection(true);
-    context.value.renderer.resetCamera();
-    context.value.renderWindow.render();
+    renderer.resetCamera();
+
+    renderWindow.render()
+  }
+})
+
+watch(()=> props.imageData, setupImageData);
+
+function setupImageData(){
+  if (props.imageData) {
+    imageMapper.setInputData(props.imageData);
+
+    imageActor.getProperty().setColorWindow(props.maxValue+props.maxValue);
+    imageActor.getProperty().setColorLevel(0);
+
+    const camera = renderer.getActiveCamera();
+    const position = camera.getFocalPoint();
+    // offset along the slicing axis
+    const normal = imageMapper.getSlicingModeNormal();
+    position[0] += normal[0];
+    position[1] += normal[1];
+    position[2] += normal[2];
+    camera.setPosition(...position);
+    switch (imageMapper.getSlicingMode()) {
+      case SlicingMode.X:
+        camera.setViewUp([0, 1, 0]);
+        break;
+      case SlicingMode.Y:
+        camera.setViewUp([1, 0, 0]);
+        break;
+      case SlicingMode.Z:
+        camera.setViewUp([0, 1, 0]);
+        break;
+      default:
+    }
+    camera.setParallelProjection(true);
+    renderer.resetCamera();
+
+    renderWindow.render();
   }
 }
 
 onMounted(()=>{
-    if (!context.value) {
-        const fullRenderWindow = vtkFullScreenRenderWindow.newInstance({
-            container: vtkContainer.value,
-        });
+  fullRenderWindow = vtkFullScreenRenderWindow.newInstance({
+      container: vtkContainer.value,
+  });
 
-        const imageMapper = vtkImageMapper.newInstance();
-        imageMapper.setSliceAtFocalPoint(true);
-        imageMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
-                              props.plane == MedicalPlanes.axial ? SlicingMode.Z :
-                              props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
+  imageMapper = vtkImageMapper.newInstance();
+  imageMapper.setSliceAtFocalPoint(true);
+  imageMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
+                        props.plane == MedicalPlanes.axial ? SlicingMode.Z :
+                        props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
 
-        // const atlasMapper = vtkImageMapper.newInstance();
-        // atlasMapper.setSliceAtFocalPoint(true);
-        // atlasMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
-        //                       props.plane == MedicalPlanes.axial ? SlicingMode.Z :
-        //                       props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
+  atlasMapper = vtkImageMapper.newInstance();
+  atlasMapper.setSliceAtFocalPoint(true);
+  atlasMapper.setSlicingMode(props.plane == MedicalPlanes.sagittal ? SlicingMode.X :
+                        props.plane == MedicalPlanes.axial ? SlicingMode.Z :
+                        props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
 
-        const rgb = vtkColorTransferFunction.newInstance();
-        rgb.addRGBPoint(-30, 0.647, 0, 0.149);
-        rgb.addRGBPoint(0, 0.968, 0.972, 0.678);
-        rgb.addRGBPoint(30, 0, 0.407, 0.215);
+  const rgb = vtkColorTransferFunction.newInstance();
+  rgb.addRGBPoint(-30, 0.647, 0, 0.149);
+  rgb.addRGBPoint(0, 0.968, 0.972, 0.678);
+  rgb.addRGBPoint(30, 0, 0.407, 0.215);
 
-        const ofun = vtkPiecewiseFunction.newInstance();
-        ofun.addPoint(-5, 1);
-        ofun.addPoint(0, 0);
-        ofun.addPoint(5, 1);
+  const ofun = vtkPiecewiseFunction.newInstance();
+  ofun.addPoint(-5, 1);
+  ofun.addPoint(0, 0);
+  ofun.addPoint(5, 1);
 
-        const imageActor = vtkImageSlice.newInstance();
-        imageActor.getProperty().setRGBTransferFunction(0, rgb);
-        imageActor.getProperty().setPiecewiseFunction(0, ofun);
-        imageActor.setMapper(imageMapper);     
+  imageActor = vtkImageSlice.newInstance();
+  imageActor.getProperty().setRGBTransferFunction(0, rgb);
+  imageActor.getProperty().setPiecewiseFunction(0, ofun);
+  imageActor.setMapper(imageMapper);     
 
-        // const atlasActor = vtkImageSlice.newInstance();
-        // atlasActor.setMapper(atlasMapper);     
+  atlasActor = vtkImageSlice.newInstance();
+  atlasActor.setMapper(atlasMapper);     
 
-        const renderer = fullRenderWindow.getRenderer();
-        const renderWindow = fullRenderWindow.getRenderWindow();
+  renderer = fullRenderWindow.getRenderer();
+  renderWindow = fullRenderWindow.getRenderWindow();
 
-        // renderer.addActor(atlasActor);
-        renderer.addActor(imageActor);
+  renderer.addActor(atlasActor);
+  renderer.addActor(imageActor);
 
-        const iStyle = vtkInteractorStyleImage.newInstance();
-        const interactor = renderWindow.getInteractor()
-        interactor.setInteractorStyle(iStyle);
-        interactor.onMouseWheel(()=>{
-          //console.log(context.value?.mapper.getSlice())
-        })
-
-        context.value = {
-            "fullRenderWindow":fullRenderWindow,
-            "renderWindow":renderWindow,
-            "renderer":renderer,
-            "actor":imageActor,
-            "mapper":imageMapper,
-        };
-      setupImageData()
-  }
+  const iStyle = vtkInteractorStyleImage.newInstance();
+  const interactor = renderWindow.getInteractor()
+  interactor.setInteractorStyle(iStyle);
+  interactor.onMouseWheel(()=>{
+    //console.log(context.value?.mapper.getSlice())
+  })
+  setupImageData()
 })
 
 onBeforeUnmount(() => {
-  if (context.value) {
-    const { fullRenderWindow, actor, mapper } = context.value;
-    actor.delete();
-    mapper.delete();
+    imageActor.delete();
+    imageMapper.delete();
+    atlasActor.delete();
+    atlasMapper.delete();
     fullRenderWindow.delete();
-    context.value = undefined;
-  }
 });
 </script>
 
