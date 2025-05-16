@@ -29,7 +29,6 @@ interface Context {
 }
 
 const vtkContainer = ref<HTMLElement>();
-const context = ref<Context>();
 
 const props = defineProps<{ 
     imageData : vtkImageData | undefined,
@@ -42,12 +41,12 @@ let renderer: vtkRenderer;
 let sliceRenderer: vtkRenderer;
 let volumeActor: vtkVolume;
 let volumeMapper: vtkVolumeMapper;
-let atlasActor: vtkActor;
 let imageActor: vtkImageSlice;
 let imageMapper: vtkImageResliceMapper;
 let imageSlicePlane: vtkPlane;
-let atlasMapper: vtkMapper;
-let atlasMarcher: vtkImageMarchingCubes;
+
+const atlasVisbility = ref<boolean>(true);
+const imageVisbility = ref<boolean>(true);
 
 watch(()=> props.brainAtlas, setupBrainAtlas)
 
@@ -61,6 +60,8 @@ function setupBrainAtlas(){
     imageActor.setOrientation(-10,0,0)
     let pos = imageActor.getPosition()
     imageActor.setPosition(pos[0], pos[1], pos[2]+5)
+
+    render()
   }
 }
 
@@ -70,6 +71,23 @@ function setupVolumeData(){
     if(props.imageData){
         volumeMapper.setInputData(props.imageData);
         renderer.resetCamera(props.imageData.getBounds())
+        render();
+    }
+}
+
+function setVisiblities(){
+  if (volumeActor && volumeMapper) {
+    volumeActor.setVisibility(imageVisbility.value);
+    render();
+  }
+  if (imageActor && imageMapper) {
+    imageActor.setVisibility(atlasVisbility.value);
+    render();
+  }
+}
+
+function render(){
+    if (renderWindow && props.imageData && props.brainAtlas) {
         renderWindow.render();
     }
 }
@@ -91,17 +109,6 @@ onMounted(()=>{
     imageSlicePlane.setNormal(0, 1, 0);
     imageMapper.setSlicePlane(imageSlicePlane);
     imageMapper.setSlabType(SlabTypes.MAX);
-
-    // atlasActor = vtkActor.newInstance();
-    // atlasMapper = vtkMapper.newInstance();
-    // atlasMarcher = vtkImageMarchingCubes.newInstance({
-    //     contourValue: 94.8,
-    //     computeNormals: true,
-    //     mergePoints: true,
-    // });
-
-    // atlasActor.setMapper(atlasMapper);
-    // atlasMapper.setInputConnection(atlasMarcher.getOutputPort());
 
     renderer = fullRenderWindow.getRenderer();
     renderWindow = fullRenderWindow.getRenderWindow();
@@ -142,7 +149,7 @@ onMounted(()=>{
     volumeActor.getProperty().setScalarOpacityUnitDistance(0, 4.5);
     volumeActor.getProperty().setInterpolationTypeToFastLinear();
 
-    // atlasActor.getProperty().setOpacity(0.5);
+    imageActor.getProperty().setOpacity(0.5);
 
     setupBrainAtlas()
     setupVolumeData()
@@ -157,9 +164,20 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="position-relative w-100 h-100">
-        <div class="position-absolute w-100 d-flex justify-content-between text-light p-2">
-            <div>
+        <div class="position-absolute w-100 d-flex justify-content-between align-items-center text-light p-2">
+            <div class="w-333 text-start"></div>
+            <div class="w-333 text-center">
                 <h3 class="">Volume</h3>
+            </div>
+            <div class="w-333 d-flex flex-column justify-content-start align-items-end text-light">
+                <div class="form-check-reverse form-switch">
+                    <label class="form-check-label" for="atlasCheck">Atlas</label>
+                    <input class="form-check-input" role="switch" id="atlasCheck" type="checkbox" v-model="atlasVisbility" @change="setVisiblities"/>
+                </div>
+                <div class="form-check-reverse form-switch">
+                    <label class="form-check-label" for="zscoreCheck">Z-scores</label>
+                    <input class="form-check-input" role="switch" id="zscoreCheck" type="checkbox" v-model="imageVisbility" @change="setVisiblities"/>
+                </div>
             </div>
         </div>
         <div class="w-100 h-100" ref="vtkContainer"/>    
