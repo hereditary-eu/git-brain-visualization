@@ -15,10 +15,11 @@ import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunc
 import vtkInteractorStyleImage from '@kitware/vtk.js/Interaction/Style/InteractorStyleImage';
 //import IRenderWindowInteractorEvent from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 
-
 const { SlicingMode } = Constants;
 
 import { MedicalPlanes } from '../../utils/consts'
+import Outline from '../../vtk-derivatives/Outline';
+import { Resolve } from '@kitware/vtk.js/Rendering/Core/Mapper/CoincidentTopologyHelper';
 
 const props = defineProps<{ imageData: vtkImageData | undefined, 
                             brainAtlas: vtkImageData | undefined,
@@ -36,72 +37,76 @@ let imageActor: vtkImageSlice;
 let atlasActor: vtkImageSlice;
 let imageMapper: vtkImageMapper;
 let atlasMapper: vtkImageMapper;
+let imageOutline: Outline;
+let atlasOutline: Outline;
 
 const vtkContainer = ref<HTMLElement>();
 
-watch(()=> props.brainAtlas, ()=>{
+const atlasVisbility = ref<boolean>(true);
+const imageVisbility = ref<boolean>(true);
+
+watch(()=> props.brainAtlas, setupBrainAtlas)
+
+function setupBrainAtlas(){
   if (atlasMapper && props.brainAtlas) {
     atlasMapper.setInputData(props.brainAtlas)
+    atlasOutline.setInputData(props.brainAtlas)
 
-    const camera = renderer.getActiveCamera();
-    const position = camera.getFocalPoint();
-    // offset along the slicing axis
-    const normal = atlasMapper.getSlicingModeNormal();
-    position[0] += normal[0];
-    position[1] += normal[1];
-    position[2] += normal[2];
-    camera.setPosition(...position);
-    switch (atlasMapper.getSlicingMode()) {
-      case SlicingMode.X:
-        camera.setViewUp([0, 1, 0]);
-        break;
-      case SlicingMode.Y:
-        camera.setViewUp([1, 0, 0]);
-        break;
-      case SlicingMode.Z:
-        camera.setViewUp([0, 1, 0]);
-        break;
-      default:
-    }
-    camera.setParallelProjection(true);
-    renderer.resetCamera();
-
-    renderWindow.render()
+    atlasActor.setScale(1.15,1.15,1.15)
+    atlasActor.setOrientation(-10,0,0)
+    let pos = atlasActor.getPosition()
+    atlasActor.setPosition(pos[0], pos[1], pos[2]+5)
   }
-})
+}
 
 watch(()=> props.imageData, setupImageData);
 
 function setupImageData(){
   if (props.imageData) {
     imageMapper.setInputData(props.imageData);
+    imageOutline.setInputData(props.imageData);
 
     imageActor.getProperty().setColorWindow(props.maxValue+props.maxValue);
     imageActor.getProperty().setColorLevel(0);
 
-    const camera = renderer.getActiveCamera();
+    alignCamera(imageMapper)
+  }
+}
+
+function alignCamera(mapper:vtkImageMapper){
+  const camera = renderer.getActiveCamera();
     const position = camera.getFocalPoint();
     // offset along the slicing axis
-    const normal = imageMapper.getSlicingModeNormal();
+    const normal = mapper.getSlicingModeNormal();
     position[0] += normal[0];
     position[1] += normal[1];
     position[2] += normal[2];
     camera.setPosition(...position);
-    switch (imageMapper.getSlicingMode()) {
+    switch (mapper.getSlicingMode()) {
       case SlicingMode.X:
-        camera.setViewUp([0, 1, 0]);
+        camera.setViewUp([0, 0, 1]);
         break;
       case SlicingMode.Y:
-        camera.setViewUp([1, 0, 0]);
+        camera.setViewUp([0, 0, 1]);
         break;
       case SlicingMode.Z:
-        camera.setViewUp([0, 1, 0]);
+        camera.setViewUp([0, -1, 0]);
         break;
       default:
     }
     camera.setParallelProjection(true);
     renderer.resetCamera();
 
+    renderWindow.render();
+}
+
+function setVisiblities(){
+  if (imageActor && imageMapper) {
+    imageActor.setVisibility(imageVisbility.value);
+    renderWindow.render();
+  }
+  if (atlasActor && atlasMapper) {
+    atlasActor.setVisibility(atlasVisbility.value);
     renderWindow.render();
   }
 }
@@ -123,6 +128,15 @@ onMounted(()=>{
                         props.plane == MedicalPlanes.axial ? SlicingMode.Z :
                         props.plane == MedicalPlanes.coronal ? SlicingMode.Y : SlicingMode.X);
 
+  imageMapper.setResolveCoincidentTopology(Resolve.PolygonOffset);
+  imageMapper.setRelativeCoincidentTopologyLineOffsetParameters(0, -66000);
+  imageMapper.setRelativeCoincidentTopologyPolygonOffsetParameters(0, -66000);
+  imageMapper.setRelativeCoincidentTopologyPointOffsetParameters(0, -66000);
+  imageMapper.setResolveCoincidentTopology(Resolve.PolygonOffset);
+  atlasMapper.setRelativeCoincidentTopologyLineOffsetParameters(-1, -1);
+  atlasMapper.setRelativeCoincidentTopologyPolygonOffsetParameters(-1, -1);
+  atlasMapper.setRelativeCoincidentTopologyPointOffsetParameters(-1, -1);
+
   const rgb = vtkColorTransferFunction.newInstance();
   rgb.addRGBPoint(-30, 0.647, 0, 0.149);
   rgb.addRGBPoint(0, 0.968, 0.972, 0.678);
@@ -141,11 +155,18 @@ onMounted(()=>{
   atlasActor = vtkImageSlice.newInstance();
   atlasActor.setMapper(atlasMapper);     
 
+  imageOutline = new Outline()
+  atlasOutline = new Outline()
+
   renderer = fullRenderWindow.getRenderer();
   renderWindow = fullRenderWindow.getRenderWindow();
 
   renderer.addActor(atlasActor);
   renderer.addActor(imageActor);
+  // renderer.addActor(imageOutline.actor);
+  // renderer.addActor(atlasOutline.actor);
+
+  renderer.setBackground(0,0,0)
 
   const iStyle = vtkInteractorStyleImage.newInstance();
   const interactor = renderWindow.getInteractor()
@@ -153,6 +174,8 @@ onMounted(()=>{
   interactor.onMouseWheel(()=>{
     //console.log(context.value?.mapper.getSlice())
   })
+
+  setupBrainAtlas()
   setupImageData()
 })
 
@@ -167,15 +190,28 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="position-relative w-100 h-100">
-    <div class="position-absolute w-100 d-flex justify-content-between">
-      <div/>
-      <h3 class="text-light">{{ title }}</h3>
-      <div/>
+    <div class="position-absolute w-100 d-flex justify-content-between align-items-center text-light p-2">
+      <div class="w-333 text-start"></div>
+      <div class="w-333 text-center">
+        <h3>{{ title }}</h3>
+      </div>
+      <div class="w-333 d-flex flex-column justify-content-start align-items-end text-light">
+        <div class="form-check-reverse form-switch">
+          <label class="form-check-label" for="atlasCheck">Atlas</label>
+          <input class="form-check-input" role="switch" id="atlasCheck" type="checkbox" v-model="atlasVisbility" @change="setVisiblities"/>
+        </div>
+        <div class="form-check-reverse form-switch">
+          <label class="form-check-label" for="zscoreCheck">Z-scores</label>
+          <input class="form-check-input" role="switch" id="zscoreCheck" type="checkbox" v-model="imageVisbility" @change="setVisiblities"/>
+        </div>
+      </div>
     </div>
     <div class="w-100 h-100" ref="vtkContainer"/>    
   </div>
 </template>
 
 <style scoped>
-
+  .w-333 {
+    width: 33.3333%;
+  }
 </style>

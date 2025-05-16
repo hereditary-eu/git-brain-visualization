@@ -21,7 +21,7 @@ import subjectMicrobiotaDataFile from './assets/data/gut/HBS_ 30perfiltered_abs_
 import gutComponentsFile from './assets/data/gut/niftiOut_mi1.txt?raw'
 
 const ssv = dsvFormat(" ");
-const DEBUG = ref<boolean>(import.meta.env.MODE == 'development')
+const PRESENTATION = ref<boolean>(import.meta.env.VITE_PRESENTATION)
 
 const modalityColor = scaleOrdinal([0,1,2,3],schemePastel1);
 
@@ -109,7 +109,7 @@ function setContributions(){
   <div class="p-1 h-40 w-100">
     <BrainVis :class="{'active':[Modalities.DMN,Modalities.ECN,Modalities.SNI].includes(currentModality)}" :activeComponent="activeComponent" :modality="currentModality" :components="components" :maxValue="maxGutComponentValue" class="d-flex justify-content-center align-items-center p-0 card h-100"/>
   </div>
-  <div v-if="DEBUG" class="d-flex w-100 justify-content-between align-items-center flex-row position-absolute" style="z-index: 100; bottom:0%;" >
+  <div v-if="PRESENTATION" class="d-flex w-100 justify-content-between align-items-center flex-row position-absolute" style="z-index: 100; bottom:0%;" >
     <div></div>
     <div class="card p-2">
       <h1>Try it yourself: <b>https://edu.nl/3j7hg</b></h1>

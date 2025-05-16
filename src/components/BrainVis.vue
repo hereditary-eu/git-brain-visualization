@@ -18,7 +18,7 @@ const props = defineProps<{activeComponent: string | undefined,
 
 const imageData = ref<vtkImageData>();
 
-const niftisLoading = ref<boolean>(false);
+const niftisLoading = ref<boolean>(true);
 
 interface ComponentImageMap {
     [component: string] : {
@@ -121,7 +121,7 @@ watch(()=>{ return {'activeComponent':props.activeComponent,
             <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" :maxValue="props.maxValue" ref="sagittalPlane"></Slicer>
             <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="coronalPlane"></Slicer>
             <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="axialPlane"></Slicer>
-            <Volume :image-data="imageData" class="w-100 h-100 border-start"></Volume>
+            <Volume :image-data="imageData" :brain-atlas="brainAtlas" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>
 </template>
