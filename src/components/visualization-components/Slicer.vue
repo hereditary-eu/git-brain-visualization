@@ -15,6 +15,8 @@ import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunc
 import vtkInteractorStyleImage from '@kitware/vtk.js/Interaction/Style/InteractorStyleImage';
 //import IRenderWindowInteractorEvent from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 
+import numeral from 'numeral';
+
 const { SlicingMode } = Constants;
 
 import { MedicalPlanes } from '../../utils/consts'
@@ -29,6 +31,8 @@ const props = defineProps<{ imageData: vtkImageData | undefined,
 const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
                           props.plane == MedicalPlanes.coronal ? 'Coronal' :
                           props.plane == MedicalPlanes.sagittal ? 'Sagittal' : '')
+
+const currentSlice = ref<string>("0")
 
 let fullRenderWindow : vtkFullScreenRenderWindow;
 let renderWindow: vtkRenderWindow;
@@ -172,7 +176,7 @@ onMounted(()=>{
   const interactor = renderWindow.getInteractor()
   interactor.setInteractorStyle(iStyle);
   interactor.onMouseWheel(()=>{
-    //console.log(context.value?.mapper.getSlice())
+    currentSlice.value = numeral(imageMapper.getSlice()).format('0.[00]')
   })
 
   setupBrainAtlas()
@@ -204,6 +208,10 @@ onBeforeUnmount(() => {
           <label class="form-check-label" for="zscoreCheck">Z-scores</label>
           <input class="form-check-input" role="switch" id="zscoreCheck" type="checkbox" v-model="imageVisbility" @change="setVisiblities"/>
         </div>
+        <div class="d-flex flex-row">
+          <div>Current slice:</div>
+          <div>{{ currentSlice }}</div>
+        </div>
       </div>
     </div>
     <div class="w-100 h-100" ref="vtkContainer"/>    
@@ -211,7 +219,5 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-  .w-333 {
-    width: 33.3333%;
-  }
+  
 </style>
