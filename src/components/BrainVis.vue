@@ -103,7 +103,7 @@ async function loadDefaultNiftis() {
                             console.log(itkImage.size)
                             for(let i = 0; i<itkImage.size[3]; i++){
                                 const args = [
-                                    'extract-volume',           // pipeline name
+                                    'extract-3d',           // pipeline name
                                     '--extract-dimensions', '3',
                                     '--direction', '3',
                                     '--index', String(i)
@@ -111,7 +111,7 @@ async function loadDefaultNiftis() {
 
                                 const inputs = [{ type: InterfaceTypes.Image, data: itkImage }]
                                 const outputs = [{ type: InterfaceTypes.Image }]
-                                runPipeline('extract-volume', args, outputs, inputs).then((results)=>{
+                                runPipeline('extract-3d', args, outputs, inputs).then((results)=>{
                                     console.log(results)
                                 })
                                 webWorker?.terminate()
