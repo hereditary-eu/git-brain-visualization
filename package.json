@@ -9,11 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@itk-wasm/downsample": "^1.7.1",
+    "@itk-wasm/elastix": "^1.0.1",
     "@itk-wasm/image-io": "^1.2.1",
     "@kitware/vtk.js": "^33.0.0",
     "bootstrap": "^5.3.3",
     "d3": "^7.9.0",
     "itk-wasm": "^1.0.0-b.176",
+    "numbro": "^2.5.0",
     "numeral": "^2.0.6",
     "vite-plugin-static-copy": "^1.0.5",
     "vtk.js": "^33.0.0",
@@ -21,6 +24,7 @@
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
+    "@types/node": "^24.2.1",
     "@types/numeral": "^2.0.5",
     "@vitejs/plugin-vue": "^5.0.4",
     "sass": "1.77.6",

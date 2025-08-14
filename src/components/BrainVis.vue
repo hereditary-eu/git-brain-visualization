@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, toRaw } from 'vue';
 import Slicer from './visualization-components/Slicer.vue'
+import { TransformCorrection } from './visualization-components/Slicer.vue'
 import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
 import { Modalities } from '../App.vue'
 // @ts-nocheck
-import { readImage, readImageFileSeries, niftiReadImage } from "@itk-wasm/image-io"
-import { InterfaceTypes, runPipeline, setPipelinesBaseUrl } from 'itk-wasm'
+import { readImage, readImageFileSeries, niftiReadImage, JsonCompatible, Image } from "@itk-wasm/image-io"
+import {defaultParameterMap, elastix, ElastixOptions} from "@itk-wasm/elastix"
 import vtkITKHelper from '@kitware/vtk.js/Common/DataModel/ITKHelper';
 import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 import { handleFileDrop } from '../utils/io';
+import { downsampleBinShrink } from '@itk-wasm/downsample';
+import { newAPISpecificView } from '@kitware/vtk.js/Rendering/Core/RenderWindow';
 
 const props = defineProps<{activeComponent: string | undefined,
                             components: Array<string>,
@@ -22,6 +25,15 @@ const imageData = ref<vtkImageData>();
 
 const niftisLoading = ref<boolean>(false);
 
+const atlasCorrection = ref<TransformCorrection>({'position':[0,-6.5,8],
+                                                      'rotation':[11.5,0,0],
+                                                      'scale':[1,1,1] 
+})
+
+function onTransformCorrection(newTransformCorrection : TransformCorrection){
+    atlasCorrection.value = structuredClone(toRaw(newTransformCorrection));
+}
+
 interface ComponentImageMap {
     [modality: number] : {
         [component: string] : vtkImageData
@@ -30,50 +42,87 @@ interface ComponentImageMap {
 
 const niftiImages : ComponentImageMap = {}
 
-const brainAtlas = ref<vtkImageData>();
+const referenceAtlas = ref<vtkImageData>();
+const regionAtlas = ref<vtkImageData>();
 
 onMounted(() => {
-    loadAtlas()
+    loadAtlases()
+    .then((atlases)=>{
+        referenceAtlas.value = atlases.reference;
+        regionAtlas.value = atlases.region; 
+        return atlases
+    })
+    //.then(registerAtlases)
 });
 
-async function loadAtlas() {
-    return fetch('../assets/data/neuro/brain-atlas-volume.nii')
-          .then((res)=>res.blob())
-          .then((data)=>{
-            return niftiReadImage(new File([data], `brain-atlas-volume.nii`))
-          })    
-          .then(({ image: itkImage, webWorker })=>{
-            webWorker.terminate();
-            if(itkImage){
-              brainAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
-            }
-          })
+async function loadAtlases() {
+    return fetch('../assets/data/neuro/brain-atlas-volume-registered.nii.gz')
+            .then((res)=>res.blob())
+            .then((data)=>{
+                return niftiReadImage(new File([data], `brain-atlas-volume.nii.gz`))
+            })    
+            .then(({ image: itkImage, webWorker })=>{
+                webWorker.terminate();
+                return {reference: Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage)), region: undefined}
+                //return {reference: itkImage, region: undefined}
+            })
+            .then((atlases : {reference: vtkImageData | undefined, region: vtkImageData | undefined})=>{
+                return fetch('../assets/data/neuro/harvard-registered.nii.gz')
+                .then((res)=>res.blob())
+                .then((data)=>{
+                    return niftiReadImage(new File([data], `harvard-registered.nii.gz`))
+                })    
+                .then(({ image: itkImage, webWorker })=>{
+                    webWorker.terminate();
+                    atlases.region = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+                    //atlases.region = itkImage
+                    return atlases
+                })
+            })
+}
+
+async function downSampleImage(
+  image : Image,
+  shrinkFactors = [4, 4, 4]
+): Promise<Image> {
+  const { downsampled: imageDownsampled } = await downsampleBinShrink(image, {
+    shrinkFactors,
+  });  
+  return imageDownsampled;
+}
+
+async function registerAtlases(atlases:{reference: Image, region: Image}){
+    // REGISTRATION NOT WORKING SINCE THE ITK-WASM PACKAGE IS FULL OF BUGS
+    const defaultParameters = await defaultParameterMap("translation", {numberOfResolutions: 2 })
+
+    defaultParameters.webWorker.terminate()
+
+    const downSampledReference = await downSampleImage(atlases.reference)
+    const downSampledRegion = await downSampleImage(atlases.region)
+
+    let options : ElastixOptions = {
+        fixed: downSampledReference,
+        moving: downSampledRegion,
+        initialTransform: undefined,
+        initialTransformParameterObject: undefined,
+    }
+
+    const elastixResults = await elastix(defaultParameters.parameterMap, options)
+
+    referenceAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(atlases.reference))
+    regionAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(elastixResults.result))
+
+    return;
 }
 
 async function loadDefaultNiftis() {
     niftisLoading.value = true;
     let dataUrlTemplate = '../assets/data/neuro/niftiOut_miX.nii.gz'
 
-    // Assuming you have a File or Blob (e.g., from a file input)
-    // let switchData = false;
-    // let url = switchData ? 'niftiOut_mi2-1.nii.gz' : 'niftiOut_mi2.nii.gz'
-    // fetch(`../assets/data/neuro/${url}`)
-    //     .then((res)=>{
-    //         return res.blob()
-    //     })
-    //     .then((data)=>{
-    //         return readImage(new File([data],'bla.nii.gz'))
-    //     })
-    //     .then(({image})=>{
-    //         console.log(image.size)
-    //     })
-
     let dataUrlsComponents : Array<{modality: number, url:string}> = new Array<{modality: number, url:string}>();
-    props.components.forEach((d:string)=>{
-        [1,2,3].forEach((modality)=>{
-            dataUrlsComponents.push({'modality': modality,
-                'url':new URL(dataUrlTemplate.replace("X",String(modality+1)), import.meta.url).href
-            })
+    [1,2,3].forEach((modality)=>{
+        dataUrlsComponents.push({'modality': modality,
+            'url':new URL(dataUrlTemplate.replace("X",String(modality+1)), import.meta.url).href
         })
     })
 
@@ -92,35 +141,18 @@ async function loadDefaultNiftis() {
             return p.then(() => res.dataPromise.then((data)=>{ 
                         return readImage(new File([data], `nifti_${res.modality}.nii.gz`))
                     })    
-                    .then(({ image: itkImage, webWorker })=>{
+                    .then(({ image: itkImage4D, webWorker })=>{
                         webWorker.terminate();
-                        if(itkImage){
-                            if(!niftiImages[res.modality]){
-                                niftiImages[res.modality] = {} as {[component : string] : vtkImageData}
-                            }
 
-                            // handle 4d image here
-                            console.log(itkImage.size)
-                            for(let i = 0; i<itkImage.size[3]; i++){
-                                const args = [
-                                    'extract-3d',           // pipeline name
-                                    '--extract-dimensions', '3',
-                                    '--direction', '3',
-                                    '--index', String(i)
-                                ]
-
-                                const inputs = [{ type: InterfaceTypes.Image, data: itkImage }]
-                                const outputs = [{ type: InterfaceTypes.Image }]
-                                runPipeline('extract-3d', args, outputs, inputs).then((results)=>{
-                                    console.log(results)
-                                })
-                                webWorker?.terminate()
-                            }
-                            
-
-                            return
-                            //return niftiImages[res.modality][res.component] = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+                        if(!niftiImages[res.modality]){
+                            niftiImages[res.modality] = {} as {[component : string] : vtkImageData}
                         }
+
+                        for(let index=0; index<itkImage4D.size[3]; index++){
+                            niftiImages[res.modality][index+1] = Object.freeze(extract3DNifti(itkImage4D,index));
+                        }
+                        
+                        return;
                     })
                         )
         },Promise.resolve())
@@ -137,10 +169,8 @@ async function loadDefaultNiftis() {
 
 watch(()=>{ return {'activeComponent':props.activeComponent,
            'modality':props.modality}}, ()=>{
-    if(props.activeComponent && 
-       typeof props.modality !== 'undefined' && 
-       props.modality > 0 &&
-        !niftisLoading.value){
+    if(props.activeComponent && typeof props.modality !== 'undefined' && props.modality > 0 && !niftisLoading.value){
+        imageData.value = undefined;
         if(niftiImages[props.modality]){
             if(niftiImages[props.modality][props.activeComponent]){
                 imageData.value = niftiImages[props.modality][props.activeComponent]
@@ -150,6 +180,7 @@ watch(()=>{ return {'activeComponent':props.activeComponent,
 })
 
 function loadNifti(e:DragEvent){
+    niftisLoading.value = true;
     let files : Array<File> = []
 
     if(e.dataTransfer){
@@ -157,15 +188,54 @@ function loadNifti(e:DragEvent){
     }
   
     readImage(files[0])
-        .then(({ image: itkImage, webWorker })=>{
+        .then(({ image: itkImage4D, webWorker })=>{
             webWorker.terminate();
-            if(itkImage && props.modality && props.activeComponent){
+            if(itkImage4D && props.modality && props.activeComponent){
                 if(!niftiImages[props.modality]){
                     niftiImages[props.modality] = {} as {[component : string] : vtkImageData}
                 }
-                return niftiImages[props.modality][props.activeComponent] = Object.freeze(vtkITKHelper.convertItkToVtkImage(itkImage))
+
+                for(let index=0; index<itkImage4D.size[3]; index++){
+                    niftiImages[props.modality][index] = Object.freeze(extract3DNifti(itkImage4D,index));
+                }
             }
         })
+         .then(()=>{
+            if(props.activeComponent && props.modality){
+                imageData.value = niftiImages[props.modality][props.activeComponent]
+            } 
+        })  
+        .finally(()=>{
+            niftisLoading.value = false;
+        })
+}
+
+function extract3DNifti(itkImage4D:any, index:number){
+    const [sizeX, sizeY, sizeZ, _] = itkImage4D.size  
+    const pixelsPerSlice = sizeX * sizeY * sizeZ    
+    const start = index * pixelsPerSlice
+    // Extract pixel values for that slice
+    const sliceData = itkImage4D.data?.slice(start, start + pixelsPerSlice)
+
+    // Make a new 2D itk-wasm Image
+    const itkImage3D = {
+        imageType: {
+            dimension: 3,
+            componentType: itkImage4D.imageType.componentType,
+            pixelType: itkImage4D.imageType.pixelType,
+            components: itkImage4D.imageType.components,
+        },
+        origin: [itkImage4D.origin[0], itkImage4D.origin[1], itkImage4D.origin[2]],
+        spacing: [itkImage4D.spacing[0], itkImage4D.spacing[1], itkImage4D.spacing[2]],
+        direction: [
+            itkImage4D.direction[0], itkImage4D.direction[1], itkImage4D.direction[2],
+            itkImage4D.direction[4], itkImage4D.direction[5], itkImage4D.direction[6],
+            itkImage4D.direction[8], itkImage4D.direction[9], itkImage4D.direction[10],
+        ],
+        size: [sizeX, sizeY, sizeZ],
+        data: sliceData
+    }
+    return vtkITKHelper.convertItkToVtkImage(itkImage3D)
 }
 </script>
 
@@ -181,10 +251,35 @@ function loadNifti(e:DragEvent){
     </div>
     <div v-else class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">
-            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.sagittal" class="w-100 h-100 border-end" :maxValue="props.maxValue" ref="sagittalPlane"></Slicer>
-            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.coronal" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="coronalPlane"></Slicer>
-            <Slicer :image-data="imageData" :brain-atlas="brainAtlas" :plane="MedicalPlanes.axial" class="w-100 h-100 border-start border-end" :maxValue="props.maxValue" ref="axialPlane"></Slicer>
-            <Volume :image-data="imageData" :brain-atlas="brainAtlas" class="w-100 h-100 border-start"></Volume>
+            <Slicer :image-data="imageData"
+                    :reference-atlas="referenceAtlas" 
+                    :region-atlas="regionAtlas" 
+                    :atlas-correction="atlasCorrection"
+                    :plane="MedicalPlanes.sagittal" 
+                    class="w-100 h-100 border-end" 
+                    :maxValue="props.maxValue" 
+                    @on-transform-correction="onTransformCorrection"
+                    ref="sagittalPlane"></Slicer>
+            <Slicer :image-data="imageData" 
+                    :reference-atlas="referenceAtlas" 
+                    :region-atlas="regionAtlas" 
+                    :atlas-correction="atlasCorrection"
+                    :plane="MedicalPlanes.coronal" 
+                    class="w-100 h-100 border-start border-end" 
+                    :maxValue="props.maxValue" 
+                    @on-transform-correction="onTransformCorrection"
+                    ref="coronalPlane"></Slicer>
+            <Slicer :image-data="imageData" 
+                    :reference-atlas="referenceAtlas" 
+                    :region-atlas="regionAtlas" 
+                    :atlas-correction="atlasCorrection"
+                    :plane="MedicalPlanes.axial" 
+                    class="w-100 h-100 border-start border-end" 
+                    :maxValue="props.maxValue"
+                    @on-transform-correction="onTransformCorrection" 
+                    ref="axialPlane"></Slicer>
+            <Volume :image-data="imageData" 
+                    :brain-atlas="referenceAtlas" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>
 </template>

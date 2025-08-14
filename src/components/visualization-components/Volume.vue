@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, onBeforeUnmount, ref, watch, render} from 'vue';
+import {onMounted, onBeforeUnmount, ref, watch} from 'vue';
 import '@kitware/vtk.js/Rendering/Profiles/Volume';
 
 import vtkFullScreenRenderWindow from '@kitware/vtk.js/Rendering/Misc/FullScreenRenderWindow';
@@ -8,25 +8,13 @@ import vtkVolumeMapper    from '@kitware/vtk.js/Rendering/Core/VolumeMapper';
 import vtkRenderWindow    from '@kitware/vtk.js/Rendering/Core/RenderWindow';
 import vtkRenderer        from '@kitware/vtk.js/Rendering/Core/Renderer';
 import vtkImageData  from '@kitware/vtk.js/Common/DataModel/ImageData'
-import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 
 import vtkColorTransferFunction from '@kitware/vtk.js/Rendering/Core/ColorTransferFunction';
 import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunction';
-import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor';
-import vtkMapper from '@kitware/vtk.js/Rendering/Core/Mapper';
 import vtkImageSlice from '@kitware/vtk.js/Rendering/Core/ImageSlice';
-import vtkImageMapper from '@kitware/vtk.js/Rendering/Core/ImageMapper';
 import vtkImageResliceMapper from '@kitware/vtk.js/Rendering/Core/ImageResliceMapper';
 import vtkPlane from '@kitware/vtk.js/Common/DataModel/Plane';
 import { SlabTypes } from '@kitware/vtk.js/Rendering/Core/ImageResliceMapper/Constants';
-
-interface Context {
-    fullRenderWindow : vtkFullScreenRenderWindow,
-    renderWindow: vtkRenderWindow,
-    renderer: vtkRenderer,
-    volume: vtkVolume,
-    mapper: vtkVolumeMapper,
-}
 
 const vtkContainer = ref<HTMLElement>();
 
@@ -56,10 +44,10 @@ function setupBrainAtlas(){
     const imc = props.brainAtlas.getCenter();
     imageSlicePlane.setOrigin(imc);
 
-    imageActor.setScale(1.15,1.15,1.15)
-    imageActor.setOrientation(-10,0,0)
-    let pos = imageActor.getPosition()
-    imageActor.setPosition(pos[0], pos[1], pos[2]+5)
+    //imageActor.setScale(1.15,1.15,1.15)
+    //imageActor.setOrientation(-10,0,0)
+    //let pos = imageActor.getPosition()
+    //imageActor.setPosition(pos[0], pos[1], pos[2]+5)
 
     render()
   }
@@ -140,9 +128,9 @@ onMounted(()=>{
     ctfun.addRGBPoint(30, 0, 0.407, 0.215);
 
     const ofun = vtkPiecewiseFunction.newInstance();
-    ofun.addPoint(-30, 1.0);
+    ofun.addPoint(-20, 1.0);
     ofun.addPoint(0, 0.0);
-    ofun.addPoint(30, 1.0);
+    ofun.addPoint(20, 1.0);
 
     volumeActor.getProperty().setRGBTransferFunction(0, ctfun);
     volumeActor.getProperty().setScalarOpacity(0, ofun);

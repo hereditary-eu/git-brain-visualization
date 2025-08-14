@@ -51,7 +51,7 @@ function setActive(component : string){
 
 function setContributions(){
   if(activeComponent.value){
-    modalityContribution.value = modalityContributions.value[activeComponent.value]
+    modalityContribution.value = modalityContributions.value[activeComponent.value] ? modalityContributions.value[activeComponent.value] : {} 
   }
 }
 

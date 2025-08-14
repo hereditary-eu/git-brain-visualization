@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import numbro from 'numbro';
 import numeral from 'numeral'
 
 defineProps<{ distribution: {[name:number]:{percentage:number, color:string}},
@@ -25,7 +26,7 @@ const onModalitySelect = (value:number)=>emit('onModalitySelect', value)
                  :class="{'active': modality == key}"
                     :style="{'background-color': distProperties.color, width:`${distProperties.percentage*100}%`}" 
                     @click="onModalitySelect(Number(key))"
-                    :title="`${modalities.get(Number(key))} contribution is: ${numeral(distProperties.percentage*100).format('0.[00]')}%`">
+                    :title="`${modalities.get(Number(key))} contribution is: ${numbro(distProperties.percentage*100).format({trimMantissa: true, mantissa: 4})}%`">
                 {{ modalities.get(Number(key)) }}
             </div>
         </div>

@@ -23,6 +23,7 @@ import Tooltip from './Tooltip.vue'
 import RangeLegend from './visualization-components/RangeLegend.vue'
 import { TooltipData } from './Tooltip.vue'
 import numeral from 'numeral'
+import numbro from 'numbro';
 
 const props = defineProps<{ blockData: Array<Array<BlockDataFormat>>, 
                             xRange: Array<string> | undefined,
@@ -61,6 +62,7 @@ watch(()=> {props.xRange,props.yRange}, updateScales)
 let sortedComponent : string | undefined = undefined
 
 let svg:Selection<SVGSVGElement, any, null, any>;
+let plotContent:Selection<SVGGElement, any,null, any>;
 let rows : Selection<SVGGElement | BaseType, Array<BlockDataFormat>, SVGGElement, any>;
 let columnLabels : Selection<BaseType | SVGTextElement, string, SVGGElement, any>;
 let rowLabels : Selection<BaseType | SVGTextElement, string, SVGGElement, any>;
@@ -77,7 +79,7 @@ function formatTooltipInfo(d:BlockDataFormat){
       'indent': 0
     },
     "Z-score":{
-      'text': numeral(d.value).format('0.[00]'),
+      'text': numbro(d.value).format({trimMantissa: true, mantissa: 4}),
       'indent': 0
     }
    } as TooltipData
@@ -117,6 +119,8 @@ onMounted(()=>{
     svg = select<SVGSVGElement,any>(d3Content.value)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
+    
+    plotContent = svg.append('g')
 
     color.domain([-props.max,props.max])
 
@@ -126,7 +130,7 @@ onMounted(()=>{
 })
 
 watch(props.blockData, ()=>{
-  svg.selectAll("*").remove()
+  plotContent.selectAll("*").remove()
   updateScales()
   setupPlot()
 })
@@ -162,7 +166,7 @@ function setupPlot(){
     x.domain(props.xRange).range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
     y.domain(props.yRange).range([plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
 
-    let columnGroupContainer = svg.append('g')
+    let columnGroupContainer = plotContent.append('g')
 
     columnGroups = columnGroupContainer
       .selectAll('g')
@@ -176,7 +180,7 @@ function setupPlot(){
             .attr("height", (props.yRange.length)*(squareSize+1.5)-1.5)
             .attr("fill-opacity", 0))
 
-    let rowGroup = svg.append('g')
+    let rowGroup = plotContent.append('g')
     
     rows = rowGroup.selectAll('g')
       .data(props.blockData)
@@ -237,7 +241,7 @@ function setupPlot(){
           emit('onActive',d.y)
         })
 
-    let axesLabels = svg.append('g')
+    let axesLabels = plotContent.append('g')
     
     // display row names
     rowLabels=axesLabels.append('g')
@@ -289,7 +293,7 @@ function setupPlot(){
       .style("font-size", "12px")
       .text(`↓ LICA components`)
 
-    svg.append("g")
+    plotContent.append("g")
       .attr('transform','translate(0,10)')
       .call(g=>g.append('rect')
         .attr('width',420)
@@ -309,7 +313,7 @@ function sortColumns(_:any,component:string){
     sortedComponent = component
     let componentRow = props.blockData.find((blockrow:BlockDataFormat[])=>blockrow[0].y==component) 
     if(componentRow){
-      let sortedRange : string[]= componentRow.sort((a:BlockDataFormat,b:BlockDataFormat)=>{
+      let sortedRange : string[]= Array.from(componentRow).sort((a:BlockDataFormat,b:BlockDataFormat)=>{
         return a.value - b.value
       }).map((block)=>String(block.x))
       x.domain(sortedRange)
@@ -319,6 +323,7 @@ function sortColumns(_:any,component:string){
     if(props.xRange){
       x.domain(props.xRange)
     }
+    sortedComponent = undefined;
   }
 
   columnLabels
@@ -328,8 +333,8 @@ function sortColumns(_:any,component:string){
           return `translate(${xPos+squareSize/2+2},${plotOffset.y-2}) rotate(-45)`
         })
   rowLabels
-    .style('font-weight', (d:any)=>d==component?'bold':'normal')
-    .style('font-size', (d:any)=>d==component?'12px':'10px')
+    .style('font-weight', (d:any)=>d==sortedComponent?'bold':'normal')
+    .style('font-size', (d:any)=>d==sortedComponent?'12px':'10px')
   rows.selectAll('rect').attr("transform", (d:any) => `translate(${x(d.x)},0)`)
   if(props.yRange){
     columnGroups.attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
