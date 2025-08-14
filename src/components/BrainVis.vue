@@ -76,7 +76,8 @@ onMounted(() => {
 });
 
 async function loadAtlases() {
-    return fetch('../assets/data/neuro/brain-atlas-volume-registered.nii.gz')
+    let url = new URL('../assets/data/neuro/brain-atlas-volume-registered.nii.gz', import.meta.url).href
+    return fetch(url)
             .then((res)=>res.blob())
             .then((data)=>{
                 return niftiReadImage(new File([data], `brain-atlas-volume.nii.gz`))
@@ -87,7 +88,8 @@ async function loadAtlases() {
                 //return {reference: itkImage, region: undefined}
             })
             .then((atlases : {reference: vtkImageData | undefined, region: vtkImageData | undefined})=>{
-                return fetch('../assets/data/neuro/harvard-registered.nii.gz')
+                let url = new URL('../assets/data/neuro/harvard-registered.nii.gz', import.meta.url).href
+                return fetch(url)
                 .then((res)=>res.blob())
                 .then((data)=>{
                     return niftiReadImage(new File([data], `harvard-registered.nii.gz`))
