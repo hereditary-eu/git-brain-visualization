@@ -31,6 +31,8 @@ import { MedicalPlanes } from '../../utils/consts'
 import Outline from '../../vtk-derivatives/Outline';
 import { Resolve } from '@kitware/vtk.js/Rendering/Core/Mapper/CoincidentTopologyHelper';
 import numbro from 'numbro';
+import vtkPointPicker from '@kitware/vtk.js/Rendering/Core/PointPicker';
+import vtkLookupTable from '@kitware/vtk.js/Common/Core/LookupTable';
 
 const { SlicingMode } = Constants;
 
@@ -40,7 +42,9 @@ const props = withDefaults(defineProps<{ imageData: vtkImageData | undefined,
                             plane: MedicalPlanes,
                             maxValue: number,
                             disableSlicing?: boolean,
-                            atlasCorrection: TransformCorrection
+                            atlasCorrection: TransformCorrection,
+                            regionLabels: Map<string,string> | undefined
+                            lut: vtkLookupTable
                           }>(), {
                             disableSlicing: false
                           })
@@ -50,6 +54,7 @@ const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
                           props.plane == MedicalPlanes.sagittal ? 'Sagittal' : '')
 
 const currentSlice = ref<string>("0")
+const currentRegion = ref<string | undefined>("")
 const currentPos = ref<string>("0")
 
 const settingsVisible = ref<boolean>(false)
@@ -266,11 +271,24 @@ onMounted(()=>{
   referenceAtlasActor = vtkImageSlice.newInstance();
   referenceAtlasActor.setMapper(referenceAtlasMapper);    
   
+  // region color coding
+  const regionColors = vtkColorTransferFunction.newInstance();
+  regionColors.addRGBPoint(-30, 0.647, 0, 0.149);
+  regionColors.addRGBPoint(0, 0.968, 0.972, 0.678);
+  regionColors.addRGBPoint(30, 0, 0.407, 0.215);
+
   regionAtlasActor = vtkImageSlice.newInstance();
+  regionAtlasActor.getProperty().setColorLevel(11);
+  regionAtlasActor.getProperty().setColorWindow(22);
   regionAtlasActor.setMapper(regionAtlasMapper);    
 
   imageOutline = new Outline()
   atlasOutline = new Outline()
+
+  const picker = vtkPointPicker.newInstance();
+  picker.setPickFromList(true);
+  picker.initializePickList();
+  picker.addPickList(regionAtlasActor);
 
   renderer = fullRenderWindow.getRenderer();
   renderWindow = fullRenderWindow.getRenderWindow();
@@ -291,7 +309,16 @@ onMounted(()=>{
       currentSlice.value = numbro(imageMapper.getSlice()).format({trimMantissa: true, mantissa: 4})
     })
     interactor.onMouseMove((e)=>{
+      const pos = e.position;
+      const point = [pos.x, pos.y, 0.0]
+      picker.pick(point, renderer);
+
       
+      const pickedPoint = picker.getPickPosition();
+      if(props.regionAtlas){
+        let value = props.regionAtlas.getScalarValueFromWorld(pickedPoint,0)
+        currentRegion.value = props.regionLabels?.get(String(value))
+      }
     })
   }
 
@@ -352,17 +379,22 @@ onBeforeUnmount(() => {
           <input class="form-check-input" role="switch" id="atlasCheck" type="checkbox" v-model="referenceAtlasVisbility" @change="setVisiblities('reference')"/>
         </div>
         <div class="form-check-reverse form-switch">
-          <label class="form-check-label" for="atlasCheck">Talairach region atlas</label>
+          <label class="form-check-label" for="atlasCheck">Harvard region atlas</label>
           <input class="form-check-input" role="switch" id="atlasCheck" type="checkbox" v-model="regionAtlasVisbility" @change="setVisiblities('region')"/>
         </div>
         <div class="form-check-reverse form-switch">
           <label class="form-check-label" for="zscoreCheck">Z-scores</label>
           <input class="form-check-input" role="switch" id="zscoreCheck" type="checkbox" v-model="imageVisbility" @change="setVisiblities()"/>
         </div>
-        <div class="d-flex flex-row">
+        <div class="d-flex flex-row mt-3">
           <div>Current slice:</div>
           <div>{{ currentSlice }}</div>
         </div>
+        <div class="d-flex flex-column align-items-end">
+          <div>Picked region:&nbsp;&nbsp;</div>
+          <div>{{ currentRegion }}</div>
+        </div>
+
       </div>
     </div>
     <div class="w-100 h-100" ref="vtkContainer"/>    

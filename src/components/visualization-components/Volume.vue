@@ -15,12 +15,14 @@ import vtkImageSlice from '@kitware/vtk.js/Rendering/Core/ImageSlice';
 import vtkImageResliceMapper from '@kitware/vtk.js/Rendering/Core/ImageResliceMapper';
 import vtkPlane from '@kitware/vtk.js/Common/DataModel/Plane';
 import { SlabTypes } from '@kitware/vtk.js/Rendering/Core/ImageResliceMapper/Constants';
+import { TransformCorrection } from './Slicer.vue';
 
 const vtkContainer = ref<HTMLElement>();
 
 const props = defineProps<{ 
     imageData : vtkImageData | undefined,
     brainAtlas: vtkImageData | undefined,        
+    atlasCorrection: TransformCorrection,
 }>()
 
 let fullRenderWindow : vtkFullScreenRenderWindow;
@@ -38,16 +40,32 @@ const imageVisbility = ref<boolean>(true);
 
 watch(()=> props.brainAtlas, setupBrainAtlas)
 
+let initialPosRefAtlas = [0,0,0]
+
+//watch(()=> props.atlasCorrection, changeTransformCorrection, {deep:true})
+
+function changeTransformCorrection(){
+  imageActor.setScale(props.atlasCorrection.scale[0],props.atlasCorrection.scale[1],props.atlasCorrection.scale[2])
+    imageActor.setOrientation(props.atlasCorrection.rotation[0],props.atlasCorrection.rotation[1],props.atlasCorrection.rotation[2])
+    imageActor.setPosition(initialPosRefAtlas[0]+props.atlasCorrection.position[0], 
+                                 initialPosRefAtlas[1]+props.atlasCorrection.position[1], 
+                                 initialPosRefAtlas[2]+props.atlasCorrection.position[2])
+  renderWindow.render()
+}
+
 function setupBrainAtlas(){
   if (imageMapper && props.brainAtlas) {
     imageMapper.setInputData(props.brainAtlas);
     const imc = props.brainAtlas.getCenter();
     imageSlicePlane.setOrigin(imc);
 
-    //imageActor.setScale(1.15,1.15,1.15)
-    //imageActor.setOrientation(-10,0,0)
-    //let pos = imageActor.getPosition()
-    //imageActor.setPosition(pos[0], pos[1], pos[2]+5)
+    // initialPosRefAtlas = imageActor.getPosition()
+
+    // imageActor.setScale(props.atlasCorrection.scale[0],props.atlasCorrection.scale[1],props.atlasCorrection.scale[2])
+    // imageActor.setOrientation(props.atlasCorrection.rotation[0],props.atlasCorrection.rotation[1],props.atlasCorrection.rotation[2])
+    // imageActor.setPosition(initialPosRefAtlas[0]+props.atlasCorrection.position[0], 
+    //                              initialPosRefAtlas[1]+props.atlasCorrection.position[1], 
+    //                              initialPosRefAtlas[2]+props.atlasCorrection.position[2])
 
     render()
   }
@@ -111,10 +129,7 @@ onMounted(()=>{
 
     sliceRenderer.setActiveCamera(renderer.getActiveCamera());
 
-    renderWindow.getInteractor().onAnimation(() => {
-        sliceRenderer.setActiveCamera(renderer.getActiveCamera());
-        imageSlicePlane.setNormal(renderer.getActiveCamera().getDirectionOfProjection());
-    });
+    renderWindow.getInteractor().onAnimation(alignSlice);
 
     renderer.setBackground(0,0,0)
 
@@ -141,7 +156,14 @@ onMounted(()=>{
 
     setupBrainAtlas()
     setupVolumeData()
+    alignSlice()
+    renderWindow.render()
 })
+
+function alignSlice(){
+    sliceRenderer.setActiveCamera(renderer.getActiveCamera());
+    imageSlicePlane.setNormal(renderer.getActiveCamera().getDirectionOfProjection());
+}
 
 onBeforeUnmount(() => {
     volumeActor.delete();

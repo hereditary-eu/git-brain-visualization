@@ -6,13 +6,16 @@ import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
 import { Modalities } from '../App.vue'
 // @ts-nocheck
-import { readImage, readImageFileSeries, niftiReadImage, JsonCompatible, Image } from "@itk-wasm/image-io"
+import { readImage, niftiReadImage, Image } from "@itk-wasm/image-io"
 import {defaultParameterMap, elastix, ElastixOptions} from "@itk-wasm/elastix"
 import vtkITKHelper from '@kitware/vtk.js/Common/DataModel/ITKHelper';
 import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 import { handleFileDrop } from '../utils/io';
 import { downsampleBinShrink } from '@itk-wasm/downsample';
-import { newAPISpecificView } from '@kitware/vtk.js/Rendering/Core/RenderWindow';
+
+import brainLabelFile from '../assets/data/neuro/region-labels.tsv?raw'
+import { scaleOrdinal, schemeAccent, tsvParse, tsvParseRows, rgb } from 'd3';
+import vtkLookupTable from '@kitware/vtk.js/Common/Core/LookupTable';
 
 const props = defineProps<{activeComponent: string | undefined,
                             components: Array<string>,
@@ -44,6 +47,23 @@ const niftiImages : ComponentImageMap = {}
 
 const referenceAtlas = ref<vtkImageData>();
 const regionAtlas = ref<vtkImageData>();
+
+const brainLabels = ref<Map<string, string>>()
+
+brainLabels.value = new Map((tsvParseRows(brainLabelFile, (row:any,rowIndex:number)=>{
+    return [String(row[0]),row[1]]
+})))
+
+const lut = vtkLookupTable.newInstance()
+let lutTable : Array<Array<number>> = []
+const colorMap = scaleOrdinal(schemeAccent)
+colorMap.domain(brainLabels.value.keys())
+brainLabels.value.forEach((value, key)=>{
+    const c = colorMap(key)
+    const crgb = rgb(c)
+    lutTable.push([Number(key),crgb.r,crgb.g,crgb.b,1])
+})
+lut.setTable(lutTable)
 
 onMounted(() => {
     loadAtlases()
@@ -258,6 +278,8 @@ function extract3DNifti(itkImage4D:any, index:number){
                     :plane="MedicalPlanes.sagittal" 
                     class="w-100 h-100 border-end" 
                     :maxValue="props.maxValue" 
+                    :region-labels="brainLabels"
+                    :lut="lut"
                     @on-transform-correction="onTransformCorrection"
                     ref="sagittalPlane"></Slicer>
             <Slicer :image-data="imageData" 
@@ -267,6 +289,8 @@ function extract3DNifti(itkImage4D:any, index:number){
                     :plane="MedicalPlanes.coronal" 
                     class="w-100 h-100 border-start border-end" 
                     :maxValue="props.maxValue" 
+                    :region-labels="brainLabels"
+                    :lut="lut"
                     @on-transform-correction="onTransformCorrection"
                     ref="coronalPlane"></Slicer>
             <Slicer :image-data="imageData" 
@@ -276,9 +300,12 @@ function extract3DNifti(itkImage4D:any, index:number){
                     :plane="MedicalPlanes.axial" 
                     class="w-100 h-100 border-start border-end" 
                     :maxValue="props.maxValue"
+                    :region-labels="brainLabels"
+                    :lut="lut"
                     @on-transform-correction="onTransformCorrection" 
                     ref="axialPlane"></Slicer>
             <Volume :image-data="imageData" 
+                    :atlas-correction="atlasCorrection"
                     :brain-atlas="referenceAtlas" class="w-100 h-100 border-start"></Volume>
         </div>
     </div>
