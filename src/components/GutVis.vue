@@ -22,7 +22,7 @@ import { select,
 import Tooltip from './Tooltip.vue'
 import RangeLegend from './visualization-components/RangeLegend.vue'
 import { TooltipData } from './Tooltip.vue'
-import numeral from 'numeral'
+
 import numbro from 'numbro';
 
 const props = defineProps<{ blockData: Array<Array<BlockDataFormat>>, 
@@ -167,17 +167,20 @@ function setupPlot(){
     y.domain(props.yRange).range([plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
 
     let columnGroupContainer = plotContent.append('g')
+    
+    let yrangelength = props.yRange.length
+    let yrangemin = props.yRange[0]
 
     columnGroups = columnGroupContainer
       .selectAll('g')
       .data(props.xRange)
       .join('g')
         .attr('id', (d:any)=>`${d.replace(/^[^a-z]+|[^\w:.-]+/gi, "")}-group`)
-        .attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
+        .attr("transform", (d:any) => `translate(${x(d)},${y(yrangemin)})`)
         .call((g)=>g
           .append('rect')
             .attr("width", squareSize)
-            .attr("height", (props.yRange.length)*(squareSize+1.5)-1.5)
+            .attr("height", yrangelength*(squareSize+1.5)-1.5)
             .attr("fill-opacity", 0))
 
     let rowGroup = plotContent.append('g')
@@ -336,8 +339,9 @@ function sortColumns(_:any,component:string){
     .style('font-weight', (d:any)=>d==sortedComponent?'bold':'normal')
     .style('font-size', (d:any)=>d==sortedComponent?'12px':'10px')
   rows.selectAll('rect').attr("transform", (d:any) => `translate(${x(d.x)},0)`)
-  if(props.yRange){
-    columnGroups.attr("transform", (d:any) => `translate(${x(d)},${y(props.yRange[0])})`)
+  if(props.yRange !== undefined){
+    let yvalue = y(props.yRange[0])
+    columnGroups.attr("transform", (d:any) => `translate(${x(d)},${yvalue})`)
   }
 }
 

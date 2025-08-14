@@ -40,18 +40,18 @@ const imageVisbility = ref<boolean>(true);
 
 watch(()=> props.brainAtlas, setupBrainAtlas)
 
-let initialPosRefAtlas = [0,0,0]
+// let initialPosRefAtlas = [0,0,0]
 
 //watch(()=> props.atlasCorrection, changeTransformCorrection, {deep:true})
 
-function changeTransformCorrection(){
-  imageActor.setScale(props.atlasCorrection.scale[0],props.atlasCorrection.scale[1],props.atlasCorrection.scale[2])
-    imageActor.setOrientation(props.atlasCorrection.rotation[0],props.atlasCorrection.rotation[1],props.atlasCorrection.rotation[2])
-    imageActor.setPosition(initialPosRefAtlas[0]+props.atlasCorrection.position[0], 
-                                 initialPosRefAtlas[1]+props.atlasCorrection.position[1], 
-                                 initialPosRefAtlas[2]+props.atlasCorrection.position[2])
-  renderWindow.render()
-}
+// function changeTransformCorrection(){
+//   imageActor.setScale(props.atlasCorrection.scale[0],props.atlasCorrection.scale[1],props.atlasCorrection.scale[2])
+//     imageActor.setOrientation(props.atlasCorrection.rotation[0],props.atlasCorrection.rotation[1],props.atlasCorrection.rotation[2])
+//     imageActor.setPosition(initialPosRefAtlas[0]+props.atlasCorrection.position[0], 
+//                                  initialPosRefAtlas[1]+props.atlasCorrection.position[1], 
+//                                  initialPosRefAtlas[2]+props.atlasCorrection.position[2])
+//   renderWindow.render()
+// }
 
 function setupBrainAtlas(){
   if (imageMapper && props.brainAtlas) {

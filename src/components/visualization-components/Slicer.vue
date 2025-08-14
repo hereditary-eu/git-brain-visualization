@@ -9,7 +9,7 @@ export { type TransformCorrection }
 </script>
 
 <script setup lang="ts">
-import {onMounted, watch, ref, onBeforeUnmount, withDefaults, defineEmits, toRaw} from 'vue';
+import {onMounted, watch, ref, onBeforeUnmount, withDefaults, defineEmits} from 'vue';
 import '@kitware/vtk.js/Rendering/Profiles/Geometry';
 
 import Constants from '@kitware/vtk.js/Rendering/Core/ImageMapper/Constants';
@@ -25,14 +25,13 @@ import vtkPiecewiseFunction from '@kitware/vtk.js/Common/DataModel/PiecewiseFunc
 import InteractorStyleImageNoJump from '../../vtk-derivatives/InteractorStyleImageNoJump'
 //import IRenderWindowInteractorEvent from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 
-import numeral from 'numeral';
-
 import { MedicalPlanes } from '../../utils/consts'
 import Outline from '../../vtk-derivatives/Outline';
 import { Resolve } from '@kitware/vtk.js/Rendering/Core/Mapper/CoincidentTopologyHelper';
 import numbro from 'numbro';
 import vtkPointPicker from '@kitware/vtk.js/Rendering/Core/PointPicker';
 import vtkLookupTable from '@kitware/vtk.js/Common/Core/LookupTable';
+import { Vector3 } from '@kitware/vtk.js/types';
 
 const { SlicingMode } = Constants;
 
@@ -55,7 +54,7 @@ const title = ref<string>(props.plane == MedicalPlanes.axial ? 'Axial' :
 
 const currentSlice = ref<string>("0")
 const currentRegion = ref<string | undefined>("")
-const currentPos = ref<string>("0")
+//const currentPos = ref<string>("0")
 
 const settingsVisible = ref<boolean>(false)
 
@@ -82,7 +81,7 @@ let imageMapper: vtkImageMapper;
 let referenceAtlasMapper: vtkImageMapper;
 let regionAtlasMapper: vtkImageMapper;
 let imageOutline: Outline;
-let atlasOutline: Outline;
+//let atlasOutline: Outline;
 
 const vtkContainer = ref<HTMLElement>();
 
@@ -283,7 +282,7 @@ onMounted(()=>{
   regionAtlasActor.setMapper(regionAtlasMapper);    
 
   imageOutline = new Outline()
-  atlasOutline = new Outline()
+  //atlasOutline = new Outline()
 
   const picker = vtkPointPicker.newInstance();
   picker.setPickFromList(true);
@@ -310,7 +309,7 @@ onMounted(()=>{
     })
     interactor.onMouseMove((e)=>{
       const pos = e.position;
-      const point = [pos.x, pos.y, 0.0]
+      const point : Vector3 = [pos.x, pos.y, 0.0]
       picker.pick(point, renderer);
 
       

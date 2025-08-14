@@ -25,7 +25,7 @@ const container = ref<SVGGElement>()
 let brushG : Selection<SVGGElement, any, any, any>;
 let brush : BrushBehavior<unknown>;
   
-let y : ScaleLinear<Number, Number, Number>;
+let y : ScaleLinear<number, number, number>;
 
 const legendTickSpace = 0
 

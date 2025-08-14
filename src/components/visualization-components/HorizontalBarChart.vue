@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import numbro from 'numbro';
-import numeral from 'numeral'
 
 defineProps<{ distribution: {[name:number]:{percentage:number, color:string}},
                             modality: number|undefined,

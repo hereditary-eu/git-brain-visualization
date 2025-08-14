@@ -6,15 +6,15 @@ import Volume from './visualization-components/Volume.vue'
 import { MedicalPlanes } from '../utils/consts'
 import { Modalities } from '../App.vue'
 // @ts-nocheck
-import { readImage, niftiReadImage, Image } from "@itk-wasm/image-io"
-import {defaultParameterMap, elastix, ElastixOptions} from "@itk-wasm/elastix"
+import { readImage, niftiReadImage } from "@itk-wasm/image-io"
+
 import vtkITKHelper from '@kitware/vtk.js/Common/DataModel/ITKHelper';
 import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 import { handleFileDrop } from '../utils/io';
-import { downsampleBinShrink } from '@itk-wasm/downsample';
+
 
 import brainLabelFile from '../assets/data/neuro/region-labels.tsv?raw'
-import { scaleOrdinal, schemeAccent, tsvParse, tsvParseRows, rgb } from 'd3';
+import { scaleOrdinal, schemeAccent, tsvParseRows, rgb } from 'd3';
 import vtkLookupTable from '@kitware/vtk.js/Common/Core/LookupTable';
 
 const props = defineProps<{activeComponent: string | undefined,
@@ -50,7 +50,7 @@ const regionAtlas = ref<vtkImageData>();
 
 const brainLabels = ref<Map<string, string>>()
 
-brainLabels.value = new Map((tsvParseRows(brainLabelFile, (row:any,rowIndex:number)=>{
+brainLabels.value = new Map((tsvParseRows(brainLabelFile, (row:any,_:number)=>{
     return [String(row[0]),row[1]]
 })))
 
@@ -58,7 +58,7 @@ const lut = vtkLookupTable.newInstance()
 let lutTable : Array<Array<number>> = []
 const colorMap = scaleOrdinal(schemeAccent)
 colorMap.domain(brainLabels.value.keys())
-brainLabels.value.forEach((value, key)=>{
+brainLabels.value.forEach((_, key)=>{
     const c = colorMap(key)
     const crgb = rgb(c)
     lutTable.push([Number(key),crgb.r,crgb.g,crgb.b,1])
@@ -101,39 +101,39 @@ async function loadAtlases() {
             })
 }
 
-async function downSampleImage(
-  image : Image,
-  shrinkFactors = [4, 4, 4]
-): Promise<Image> {
-  const { downsampled: imageDownsampled } = await downsampleBinShrink(image, {
-    shrinkFactors,
-  });  
-  return imageDownsampled;
-}
+// async function downSampleImage(
+//   image : Image,
+//   shrinkFactors = [4, 4, 4]
+// ): Promise<Image> {
+//   const { downsampled: imageDownsampled } = await downsampleBinShrink(image, {
+//     shrinkFactors,
+//   });  
+//   return imageDownsampled;
+// }
 
-async function registerAtlases(atlases:{reference: Image, region: Image}){
-    // REGISTRATION NOT WORKING SINCE THE ITK-WASM PACKAGE IS FULL OF BUGS
-    const defaultParameters = await defaultParameterMap("translation", {numberOfResolutions: 2 })
+// async function registerAtlases(atlases:{reference: Image, region: Image}){
+//     // REGISTRATION NOT WORKING SINCE THE ITK-WASM PACKAGE IS FULL OF BUGS
+//     const defaultParameters = await defaultParameterMap("translation", {numberOfResolutions: 2 })
 
-    defaultParameters.webWorker.terminate()
+//     defaultParameters.webWorker.terminate()
 
-    const downSampledReference = await downSampleImage(atlases.reference)
-    const downSampledRegion = await downSampleImage(atlases.region)
+//     const downSampledReference = await downSampleImage(atlases.reference)
+//     const downSampledRegion = await downSampleImage(atlases.region)
 
-    let options : ElastixOptions = {
-        fixed: downSampledReference,
-        moving: downSampledRegion,
-        initialTransform: undefined,
-        initialTransformParameterObject: undefined,
-    }
+//     let options : ElastixOptions = {
+//         fixed: downSampledReference,
+//         moving: downSampledRegion,
+//         initialTransform: undefined,
+//         initialTransformParameterObject: undefined,
+//     }
 
-    const elastixResults = await elastix(defaultParameters.parameterMap, options)
+//     const elastixResults = await elastix(defaultParameters.parameterMap, options)
 
-    referenceAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(atlases.reference))
-    regionAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(elastixResults.result))
+//     referenceAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(atlases.reference))
+//     regionAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(elastixResults.result))
 
-    return;
-}
+//     return;
+// }
 
 async function loadDefaultNiftis() {
     niftisLoading.value = true;

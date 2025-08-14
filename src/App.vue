@@ -30,7 +30,7 @@ const modalityContributions = ref<{[component:string]:{[modality:number]:{percen
 
 const modalityContribution = ref<{[name:number]:{percentage:number, color:string}}>({})
 
-let gutXRange = ref<Array<String>|undefined>(undefined)
+let gutXRange = ref<Array<string>|undefined>(undefined)
 
 let gutBlockData = ref<BlockDataFormat[][]|undefined>(undefined)
 
