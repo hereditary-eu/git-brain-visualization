@@ -147,7 +147,7 @@ function updateScales(){
     legendSize.value[1] = props.yRange.length*(squareSize+1.5)
 
     select("#legend")
-      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y+((props.yRange.length*(squareSize+1.5)))-(props.yRange.length-1)*15})`)
+      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y})`)
 
   }
   if(props.xRange){
