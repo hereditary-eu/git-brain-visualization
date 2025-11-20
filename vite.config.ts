@@ -19,8 +19,8 @@ export default defineConfig({
           dest: 'assets/itk/image-io',
         },
         {
-          src: 'src/assets/data/*',
-          dest: 'assets/data',
+          src: 'src/assets/example-data/*',
+          dest: 'assets/example-data',
         },        
       ],
     }),

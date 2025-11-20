@@ -13,7 +13,7 @@ import { vtkImageData } from '@kitware/vtk.js/Common/DataModel/ImageData'
 import { handleFileDrop } from '../utils/io';
 
 
-import brainLabelFile from '../assets/data/neuro/region-labels.tsv?raw'
+import brainLabelFile from '../assets/example-data/neuro/region-labels.tsv?raw'
 import { scaleOrdinal, schemeAccent, tsvParseRows, rgb } from 'd3';
 import vtkLookupTable from '@kitware/vtk.js/Common/Core/LookupTable';
 
@@ -76,7 +76,7 @@ onMounted(() => {
 });
 
 async function loadAtlases() {
-    let url = new URL('../assets/data/neuro/brain-atlas-volume-registered.nii.gz', import.meta.url).href
+    let url = new URL('../assets/example-data/neuro/brain-atlas-volume-registered.nii.gz', import.meta.url).href
     return fetch(url)
             .then((res)=>res.blob())
             .then((data)=>{
@@ -88,7 +88,7 @@ async function loadAtlases() {
                 //return {reference: itkImage, region: undefined}
             })
             .then((atlases : {reference: vtkImageData | undefined, region: vtkImageData | undefined})=>{
-                let url = new URL('../assets/data/neuro/harvard-registered.nii.gz', import.meta.url).href
+                let url = new URL('../assets/example-data/neuro/harvard-registered.nii.gz', import.meta.url).href
                 return fetch(url)
                 .then((res)=>res.blob())
                 .then((data)=>{
@@ -103,46 +103,12 @@ async function loadAtlases() {
             })
 }
 
-// async function downSampleImage(
-//   image : Image,
-//   shrinkFactors = [4, 4, 4]
-// ): Promise<Image> {
-//   const { downsampled: imageDownsampled } = await downsampleBinShrink(image, {
-//     shrinkFactors,
-//   });  
-//   return imageDownsampled;
-// }
-
-// async function registerAtlases(atlases:{reference: Image, region: Image}){
-//     // REGISTRATION NOT WORKING SINCE THE ITK-WASM PACKAGE IS FULL OF BUGS
-//     const defaultParameters = await defaultParameterMap("translation", {numberOfResolutions: 2 })
-
-//     defaultParameters.webWorker.terminate()
-
-//     const downSampledReference = await downSampleImage(atlases.reference)
-//     const downSampledRegion = await downSampleImage(atlases.region)
-
-//     let options : ElastixOptions = {
-//         fixed: downSampledReference,
-//         moving: downSampledRegion,
-//         initialTransform: undefined,
-//         initialTransformParameterObject: undefined,
-//     }
-
-//     const elastixResults = await elastix(defaultParameters.parameterMap, options)
-
-//     referenceAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(atlases.reference))
-//     regionAtlas.value = Object.freeze(vtkITKHelper.convertItkToVtkImage(elastixResults.result))
-
-//     return;
-// }
-
 async function loadDefaultNiftis() {
     niftisLoading.value = true;
-    let dataUrlTemplate = '../assets/data/neuro/niftiOut_miX.nii.gz'
+    let dataUrlTemplate = '../assets/example-data/neuro/niftiOut_miX.nii.gz'
 
     let dataUrlsComponents : Array<{modality: number, url:string}> = new Array<{modality: number, url:string}>();
-    [1,2,3].forEach((modality)=>{
+    [1,2,3,4].forEach((modality)=>{
         dataUrlsComponents.push({'modality': modality,
             'url':new URL(dataUrlTemplate.replace("X",String(modality+1)), import.meta.url).href
         })
@@ -269,7 +235,7 @@ function extract3DNifti(itkImage4D:any, index:number){
     </div>
     <div v-else-if="!imageData" @drop.prevent="loadNifti" @dragenter.prevent @dragover.prevent class="d-flex flex-column justify-content-center align-items-center">
         <h2>This modality/component combination doesn't exist in the current brain data, drag and drop the modality 4D brain data here to load.</h2>
-        <button class="btn btn-success" @click="loadDefaultNiftis">Or press here to load the example set.</button>
+        <button class="btn btn-success" @click="loadDefaultNiftis">Or press here to load the randomized example set.</button>
     </div>
     <div v-else class="d-flex flex-column rounded justify-content-between align-items-stretch overflow-hidden">
         <div class="d-flex flex-row justify-content-between align-items-stretch p-0 w-100 h-100">

@@ -26,3 +26,4 @@ dist-ssr
 .env
 
 test_data
+src/assets/data

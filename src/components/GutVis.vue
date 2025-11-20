@@ -38,14 +38,18 @@ const emit = defineEmits<{
 let width = 2018;
 let height = 502;
 
-let squareSize = 14
+let squareSizeX = 14
+let squareSizeY = 14
 
 const plotContainer = ref<HTMLDivElement | null>(null)
 const d3Content = ref<SVGSVGElement>()
+const plotContentElement = ref<SVGGElement>()
 
 const plotOffset = {x:15,y:130}
 
-const legendSize = ref<[number,number]>([20,2*(squareSize+1.5)])
+const currentTranslate = new Array(0,0)
+
+const legendSize = ref<[number,number]>([20,2*(squareSizeY+1.5)])
 
 const tooltipPos = ref<Array<number>>([0,0])
 const tooltipInfo = ref<TooltipData | null>(null)
@@ -54,8 +58,8 @@ const thresholdValues = ref<[number,number]>([-2.3,2.3])
 
 const color = scaleSequential([-props.max,props.max], interpolateRdYlGn)
 
-const x = scaleBand(['lorem','ipsem'], [plotOffset.x, plotOffset.x+2*(squareSize+1.5)]);
-const y = scaleBand(['1','2'], [plotOffset.y, plotOffset.y+2*(squareSize+1.5)]);
+const x = scaleBand(['lorem','ipsem'], [plotOffset.x, plotOffset.x+2*(squareSizeX+1.5)]);
+const y = scaleBand(['1','2'], [plotOffset.y, plotOffset.y+2*(squareSizeY+1.5)]);
 
 watch(()=> {props.xRange,props.yRange}, updateScales)
 
@@ -110,7 +114,7 @@ watch(thresholdValues, (tvalues)=>{
 })
 
 onMounted(()=>{
-  if(d3Content.value){
+  if(d3Content.value && plotContentElement.value){
     if(plotContainer.value){
       width = plotContainer.value.offsetWidth
       height = plotContainer.value.offsetHeight
@@ -120,51 +124,75 @@ onMounted(()=>{
       .attr("preserveAspectRatio", "xMinYMin meet")
       .attr("viewBox", [0, 0, width, height]);
     
-    plotContent = svg.append('g')
+    plotContent = select<SVGGElement, any>(plotContentElement.value)
 
     color.domain([-props.max,props.max])
 
-    updateScales()
-    setupPlot()
+    setupContent()
   }
 })
 
 watch(props.blockData, ()=>{
   plotContent.selectAll("*").remove()
+  setupContent()
+})
+
+function setupContent(){
   updateScales()
   setupPlot()
-})
+  resizeOnContent()
+}
+
+function resizeOnContent(){
+  // Size svg viewbox to content and size to parent container
+  if(plotContainer.value){
+    // reset view
+    plotContent.attr("transform", `translate(0,0)`)
+
+    let svgEl = svg.node() as SVGSVGElement
+    let bb = svgEl.getBBox();
+    svg.attr('width', plotContainer.value.offsetWidth)
+        .attr('height', plotContainer.value.offsetHeight)
+        .attr("preserveAspectRatio", "xMinYMin meet")
+        .attr("viewBox", [0, 0, bb.width, bb.height]);
+
+    // set offset for negative content
+    currentTranslate[0] = Math.abs(bb.x) + (plotContainer.value.offsetWidth/2 - bb.width/2 + 70)
+    currentTranslate[1] = Math.abs(bb.y)
+
+    plotContent.attr("transform", `translate(${currentTranslate[0]},${currentTranslate[1]})`)
+
+  }
+}
 
 function updateScales(){
   if(props.xRange && props.yRange && props.blockData){
-    let xSquare = ((width - plotOffset.x - 70) / props.xRange.length ) - 1.5
-    if((xSquare+1.5)*props.yRange.length > height - plotOffset.y - 20){
-      squareSize = ((height - plotOffset.y -20) / props.yRange.length ) - 1.5
-    }         
-    else {
-      squareSize = xSquare
-    }
-    legendSize.value[1] = props.yRange.length*(squareSize+1.5)
+    squareSizeY = ((height - plotOffset.y - 20) / props.yRange.length ) - 1.5
+    squareSizeX = squareSizeY < 10 ?
+                   10 : (squareSizeY+1.5)*props.xRange.length > width - plotOffset.x - 70 ?
+                      ((width - plotOffset.x - 70) / props.xRange.length ) - 1.5 : squareSizeY
+    
+    legendSize.value[1] = props.yRange.length*(squareSizeY+1.5)
 
     select("#legend")
-      .attr("transform", `translate(${(squareSize + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y})`)
+      .attr("transform", `translate(${(squareSizeX + 1.5)*props.xRange.length + legendSize.value[0] + 20},${plotOffset.y})`)
 
   }
   if(props.xRange){
     x.domain(props.xRange);
-    x.range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
+    x.range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSizeX+1.5)]);
   }
   if(props.yRange){
     y.domain(props.yRange);
-    y.range([plotOffset.y, plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
-    legendSize.value = [20,props.yRange.length*(squareSize+1.5)]
+    y.range([plotOffset.y, plotOffset.y, plotOffset.y+props.yRange.length*(squareSizeY+1.5)]);
+    legendSize.value = [20,props.yRange.length*(squareSizeY+1.5)]
   }
 }
 
 function setupPlot(){
   if(props.xRange && props.yRange && props.blockData){
-    x.domain(props.xRange).range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSize+1.5)]);
-    y.domain(props.yRange).range([plotOffset.y, plotOffset.y+props.yRange.length*(squareSize+1.5)]);
+    x.domain(props.xRange).range([plotOffset.x, plotOffset.x+props.xRange.length*(squareSizeX+1.5)]);
+    y.domain(props.yRange).range([plotOffset.y, plotOffset.y+props.yRange.length*(squareSizeY+1.5)]);
 
     let columnGroupContainer = plotContent.append('g')
     
@@ -179,8 +207,8 @@ function setupPlot(){
         .attr("transform", (d:any) => `translate(${x(d)},${y(yrangemin)})`)
         .call((g)=>g
           .append('rect')
-            .attr("width", squareSize)
-            .attr("height", yrangelength*(squareSize+1.5)-1.5)
+            .attr("width", squareSizeX)
+            .attr("height", yrangelength*(squareSizeY+1.5)-1.5)
             .attr("fill-opacity", 0))
 
     let rowGroup = plotContent.append('g')
@@ -194,8 +222,8 @@ function setupPlot(){
       .data((d:any)=>d)
       .join('rect')
         .attr("transform", (d:any) => `translate(${x(d.x)},0)`)
-        .attr("width", squareSize)
-        .attr("height", squareSize)
+        .attr("width", squareSizeX)
+        .attr("height", squareSizeY)
         .attr("fill", (d:any) => { 
           return d.value > -2.3 && d.value < 2.3  ? 'whitesmoke' :
                 color(Number(d.value))
@@ -259,7 +287,7 @@ function setupPlot(){
           .attr('transform', (d:string)=>{
             let yPos : number | undefined = y(d)
             yPos = yPos ? yPos : -100;
-            return `translate(${plotOffset.x-2},${yPos+squareSize/2+3})`
+            return `translate(${plotOffset.x-2},${yPos+squareSizeY/2+3})`
           })
           .text((d:any)=>d)
 
@@ -274,12 +302,12 @@ function setupPlot(){
           .attr('transform', (d:any)=>{
             let xPos : number | undefined = x(d)
             xPos = xPos ? xPos : -100;
-            return `translate(${xPos+squareSize/2+2},${plotOffset.y-2}) rotate(-45)`
+            return `translate(${xPos+squareSizeX/2+2},${plotOffset.y-2}) rotate(-45)`
           })
           .text((d:any)=>d)
 
     axesLabels.append("text")
-      .attr("x", props.xRange.length*(squareSize + 1.5))
+      .attr("x", props.xRange.length*(squareSizeX + 1.5))
       .attr("y", height-5)
       .attr("fill", "currentColor")
       .attr("text-anchor", "end")
@@ -333,7 +361,7 @@ function sortColumns(_:any,component:string){
     .attr('transform', (d:any)=>{
           let xPos : number | undefined = x(d)
           xPos = xPos ? xPos : -100;
-          return `translate(${xPos+squareSize/2+2},${plotOffset.y-2}) rotate(-45)`
+          return `translate(${xPos+squareSizeX/2+2},${plotOffset.y-2}) rotate(-45)`
         })
   rowLabels
     .style('font-weight', (d:any)=>d==sortedComponent?'bold':'normal')
@@ -351,7 +379,9 @@ function sortColumns(_:any,component:string){
  <div class="d-flex position-relative justify-content-center align-items-center flex-column w-100 h-100 p-2"> <!-- Add padding above the container so the width and height are properly calculated in the setup script-->
     <div ref="plotContainer" class="d-flex justify-content-center align-items-center flex-column w-100 h-100">
       <svg ref="d3Content">
-        <RangeLegend id="legend" :value="[-2.3,2.3]" :size="legendSize" :insideOut="false" :color="color"  @onChange="(tValues)=>thresholdValues = tValues"/>
+        <g ref="plotContentElement">
+          <RangeLegend id="legend" :value="[-3,3]" :size="legendSize" :insideOut="false" :color="color"  @onChange="(tValues)=>thresholdValues = tValues"/>
+        </g>
       </svg>
     </div>
     <Tooltip title="" :class="[tooltipInfo ? 'd-flex' : 'd-none']" :tooltipData="tooltipInfo" :position="tooltipPos"/>

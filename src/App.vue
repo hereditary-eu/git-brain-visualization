@@ -16,8 +16,8 @@ import GutVis, { BlockDataFormat } from './components/GutVis.vue'
 import HorizontalBarChart from './components/visualization-components/HorizontalBarChart.vue'
 import { csvParse, dsvFormat, extent, schemePastel1, scaleOrdinal } from 'd3'
 
-import modalityContributionsFile from './assets/data/Modality_contributions.txt?raw'
-import gutComponentsFile from './assets/data/gut/gut-microbiota-lica-results.csv?raw'
+import modalityContributionsFile from './assets/example-data/Modality_contributions.txt?raw'
+import gutComponentsFile from './assets/example-data/gut/gut-microbiota-lica-results.csv?raw'
 import { handleFileDrop } from './utils/io'
 
 const ssv = dsvFormat(" ");
@@ -31,6 +31,7 @@ const modalityContributions = ref<{[component:string]:{[modality:number]:{percen
 const modalityContribution = ref<{[name:number]:{percentage:number, color:string}}>({})
 
 let gutXRange = ref<Array<string>|undefined>(undefined)
+let gutYRange = ref<Array<string>|undefined>(undefined)
 
 let gutBlockData = ref<BlockDataFormat[][]|undefined>(undefined)
 
@@ -57,15 +58,21 @@ function setContributions(){
 
 function loadExampleGutMicroBiota(){
   gutBlockData.value = Array.from(csvParse(gutComponentsFile, (row:any,rowIndex:number,columns)=>{
+    if(!gutYRange.value){
+      gutYRange.value = new Array<string>()
+    }
+    if(rowIndex < 25){
+      gutYRange.value.push(String(rowIndex+1))
+    }
     gutXRange.value = columns;
-    return Object.entries(row).map(([key,val])=>{
+    return rowIndex < 25 ? Object.entries(row).map(([key,val])=>{
       return {
         x: String(key),
         y: String(rowIndex+1), 
-        value: Number(val), 
+        value: (Number(val)*(Math.random() > 0.5 ? 1:-1))*60, 
         text:''
       }
-    })
+    }) : undefined
   }))
 
   components = gutBlockData.value.map((d:any)=>d[0].y)
@@ -86,6 +93,10 @@ function loadGutMicroBiota(e:DragEvent){
     () => {
       if(reader.result && typeof reader.result === "string"){
         gutBlockData.value = Array.from(csvParse(reader.result, (row:any,rowIndex:number,columns)=>{
+          if(!gutYRange.value){
+            gutYRange.value = new Array<string>()
+          }
+          gutYRange.value.push(String(rowIndex+1))
           gutXRange.value = columns;
           return Object.entries(row).map(([key,val])=>{
             return {
@@ -167,7 +178,7 @@ function loadModalityContribution(e:DragEvent){
     <div class="d-flex justify-content-center align-items-center h-100 p-0 card">
       <div class="w-100" v-if="!gutBlockData" @drop.prevent="loadGutMicroBiota" @dragenter.prevent @dragover.prevent>
         <h2>No gut-microbiota LICA data loaded. Drag and drop a LICA csv file here.</h2>
-        <button class="btn btn-success" @click="loadExampleGutMicroBiota">Or press here to load the example set.</button>
+        <button class="btn btn-success" @click="loadExampleGutMicroBiota">Or press here to load the randomized example set.</button>
         <div class="d-flex flex-column justify-content-center align-items-center mt-2"> 
           <h4>Example file: </h4>
           <table class="table w-25">
@@ -204,7 +215,7 @@ function loadModalityContribution(e:DragEvent){
             :activeComponent="activeComponent" 
             :blockData="gutBlockData" 
             :xRange="gutXRange" 
-            :yRange="[...Array(25).keys()].map((d:any)=>String(d+1))" 
+            :yRange="gutYRange" 
             :max="maxGutComponentValue" 
             class="flex-grow-1"/>
     </div>
@@ -233,7 +244,7 @@ function loadModalityContribution(e:DragEvent){
       <div class="d-flex justify-content-center align-items-center flex-column h-100 p-0 card overflow-hidden">
         <div class="d-flex flex-row w-100 justify-content-around align-items-center h-100" v-if="Object.keys(modalityContributions).length == 0" @drop.prevent="loadModalityContribution" @dragenter.prevent @dragover.prevent>
           <h2 class="m-0">No modality contributions loaded. Drag and drop a contribution file here.</h2>
-          <button class="btn btn-success" @click="loadExampleModalityContributions">Or press here to load the example set.</button>
+          <button class="btn btn-success" @click="loadExampleModalityContributions">Or press here to load the randomized example set.</button>
           <div class="d-flex flex-row justify-content-center align-items-center"> 
             <h4 class="mb-0 me-5">Example file: </h4>
             <table style="font-size:0.6rem;" class="table table-sm w-25">
