@@ -184,7 +184,7 @@ function loadNifti(e:DragEvent){
                 }
 
                 for(let index=0; index<itkImage4D.size[3]; index++){
-                    niftiImages[props.modality][index] = Object.freeze(extract3DNifti(itkImage4D,index));
+                    niftiImages[props.modality][index+1] = Object.freeze(extract3DNifti(itkImage4D,index));
                 }
             }
         })
